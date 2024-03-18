@@ -66,7 +66,7 @@ idea {
 }
 
 publish {
-    githubRepo = "LSPosed/LSParanoid"
+    githubRepo = "Androidacy/LSParanoid"
     publishPlugin("$group", rootProject.name, "org.lsposed.lsparanoid.plugin.LSParanoidPlugin") {
         name = rootProject.name
         description = "String obfuscator for Android applications"
