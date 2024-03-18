@@ -9,7 +9,7 @@ plugins {
 
 
 allprojects {
-    group = "org.androidacy.lsparanoid"
+    group = "com.github.Androidacy.LSParanoid"
     version = "0.6.1"
 
     plugins.withType(JavaPlugin::class.java) {
