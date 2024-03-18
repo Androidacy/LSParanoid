@@ -1,5 +1,5 @@
-[![Build](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml/badge.svg)](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/org.lsposed.lsparanoid/org.lsposed.lsparanoid.gradle.plugin)](https://central.sonatype.com/namespace/org.lsposed.lsparanoid)
+<!--[![Build](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml/badge.svg)](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml)-->
+[![](https://jitpack.io/v/Androidacy/LSParanoid.svg)](https://jitpack.io/#Androidacy/LSParanoid)
 
 LSParanoid
 ========
