@@ -25,18 +25,20 @@ internal fun JarOutputStream.createFile(name: String, data: ByteArray) {
     try {
         putNextEntry(JarEntry(name.replace(File.separatorChar, '/')))
         write(data)
-        closeEntry()
     } catch (e: ZipException) {
         // it's normal to have duplicated files in META-INF
         if (!name.startsWith("META-INF")) throw e
+    } finally {
+        closeEntry()
     }
 }
 
 internal fun JarOutputStream.createDirectory(name: String) {
     try {
         putNextEntry(JarEntry(name.replace(File.separatorChar, '/')))
-        closeEntry()
     } catch (ignored: ZipException) {
         // it's normal that the directory already exists
+    } finally {
+        closeEntry()
     }
 }
