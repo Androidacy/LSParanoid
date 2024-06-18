@@ -106,7 +106,7 @@ class ParanoidProcessor(
 
     private fun createDeobfuscator(): Deobfuscator {
         val deobfuscatorInternalName =
-            "org/lsposed/LSParanoid/Deobfuscator${composeDeobfuscatorNameSuffix()}"
+            "org/lsposed/lsparanoid/Deobfuscator${composeDeobfuscatorNameSuffix()}"
         val deobfuscatorType = getObjectTypeByInternalName(deobfuscatorInternalName)
         val deobfuscationMethod =
             Method("getString", Type.getType(String::class.java), arrayOf(Type.LONG_TYPE))
