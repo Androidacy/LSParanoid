@@ -1,4 +1,4 @@
-<!--[![Build](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml/badge.svg)](https://github.com/LSPosed/LSParanoid/actions/workflows/build.yml)-->
+<!--[![Build](https://github.com/Androidacy/LSParanoid/actions/workflows/build.yml/badge.svg)](https://github.com/Androidacy/LSParanoid/actions/workflows/build.yml)-->
 [![](https://jitpack.io/v/Androidacy/LSParanoid.svg)](https://jitpack.io/#Androidacy/LSParanoid)
 
 LSParanoid

@@ -25,7 +25,7 @@ val genTask = tasks.register("generateBuildClass") {
     outputs.dir(generatedDir)
     doLast {
         val buildClassFile =
-            File(generatedJavaSourcesDir, "org/lsposed/lsparanoid/plugin/Build.java")
+            File(generatedJavaSourcesDir, "org/Androidacy/LSParanoid/plugin/Build.java")
         buildClassFile.parentFile.mkdirs()
         buildClassFile.writeText(
             """
@@ -70,11 +70,11 @@ publish {
     publishPlugin("$group", rootProject.name, "org.lsposed.lsparanoid.plugin.LSParanoidPlugin") {
         name = rootProject.name
         description = "String obfuscator for Android applications"
-        url = "https://github.com/LSPosed/LSParanoid"
+        url = "https://github.com/Androidacy/LSParanoid"
         licenses {
             license {
                 name = "Apache License 2.0"
-                url = "https://github.com/LSPosed/LSParanoid/blob/master/LICENSE.txt"
+                url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
             }
         }
         developers {
@@ -84,8 +84,8 @@ publish {
             }
         }
         scm {
-            connection = "scm:git:https://github.com/LSPosed/LSParanoid.git"
-            url = "https://github.com/LSPosed/LSParanoid"
+            connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
+            url = "https://github.com/Androidacy/LSParanoid"
         }
     }
 }

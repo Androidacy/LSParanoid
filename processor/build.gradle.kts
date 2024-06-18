@@ -12,7 +12,7 @@ dependencies {
 }
 
 publish {
-    githubRepo = "LSPosed/LSParanoid"
+    githubRepo = "Androidacy/LSParanoid"
     publications {
         register<MavenPublication>(rootProject.name) {
             artifactId = project.name
@@ -22,11 +22,11 @@ publish {
             pom {
                 name = project.name
                 description = "String obfuscator for Android applications"
-                url = "https://github.com/LSPosed/LSParanoid"
+                url = "https://github.com/Androidacy/LSParanoid"
                 licenses {
                     license {
                         name = "Apache License 2.0"
-                        url = "https://github.com/LSPosed/LSParanoid/blob/master/LICENSE.txt"
+                        url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
                     }
                 }
                 developers {
@@ -36,8 +36,8 @@ publish {
                     }
                 }
                 scm {
-                    connection = "scm:git:https://github.com/LSPosed/LSParanoid.git"
-                    url = "https://github.com/LSPosed/LSParanoid"
+                    connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
+                    url = "https://github.com/Androidacy/LSParanoid"
                 }
             }
         }
