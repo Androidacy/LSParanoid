@@ -59,12 +59,7 @@ class LSParanoidPlugin : Plugin<Project> {
         project.tasks.withType(JavaCompile::class.java) {
             it.options.compilerArgs.add("-XDstringConcat=inline")
         }
-        project.tasks.named("compileKotlin", KotlinCompilationTask::class.java) {
-            it.compilerOptions {
-                freeCompilerArgs.add("-Xstring-concat=inline")
-            }
-        }
-        project.tasks.named("compileTestKotlin", KotlinCompilationTask::class.java) {
+        project.tasks.withType(KotlinCompilationTask::class.java) {
             it.compilerOptions {
                 freeCompilerArgs.add("-Xstring-concat=inline")
             }
