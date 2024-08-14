@@ -22,7 +22,7 @@ pluginManagement {
     mavenCentral()
   }
   plugins {
-    id("org.lsposed.lsparanoid") version "......"
+    id("com.github.Androidacy:LSParanoid") version "......"
   }
 }
 ```
