@@ -16,20 +16,27 @@
 
 package org.lsposed.lsparanoid.processor.commons
 
+import org.lsposed.lsparanoid.processor.logging.getLogger
 import java.io.File
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipException
 
+
 internal fun JarOutputStream.createFile(name: String, data: ByteArray) {
+    val logger = getLogger()
     try {
         putNextEntry(JarEntry(name.replace(File.separatorChar, '/')))
         write(data)
     } catch (e: ZipException) {
         // it's normal to have duplicated files in META-INF
-        if (!name.startsWith("META-INF")) throw e
+        if (!name.startsWith("META-INF") || !name.startsWith("module-info")) {
+            throw e
+        } else {
+            logger.info("Duplicated file: {}", name)
+        }
     } finally {
-        closeEntry()
+        closeQuietly()
     }
 }
 
@@ -39,6 +46,6 @@ internal fun JarOutputStream.createDirectory(name: String) {
     } catch (ignored: ZipException) {
         // it's normal that the directory already exists
     } finally {
-        closeEntry()
+        closeQuietly()
     }
 }
