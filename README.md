@@ -6,6 +6,10 @@ LSParanoid
 
 String obfuscator for Android applications. LSParanoid supports [configuration cache](https://docs.gradle.org/current/userguide/configuration_cache.html).
 
+This library has been modified from the original for Androidacy's internal usage. We do not warrant that this library will work in any other circumstances or scenarios, nor is it part of our supported product portfolio.
+
+**This library is not intended as a security tool. Security by obscurity is _never_ a good idea.**
+
 Usage
 -----
 In order to make LSParanoid work with your project you have to apply the LSParanoid Gradle plugin
@@ -121,12 +125,15 @@ public class MainActivity extends AppCompatActivity {
 
 Credit
 ------
-LSParanoid was forked from https://github.com/MichaelRocks/paranoid. Credits to its original author Michael Rozumyanskiy.
+LSParanoid was originally forked from https://github.com/MichaelRocks/paranoid. Credits to its original author Michael Rozumyanskiy.
+
+This version was forked from https://github.com/LSPosed/LSParanoid. Credits to LSPosed Developers.
 
 License
 =======
     Copyright 2021 Michael Rozumyanskiy
     Copyright 2023 LSPosed
+    Copyright 2024 Androidacy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

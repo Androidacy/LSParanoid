@@ -78,7 +78,7 @@ class Patcher(
 
     private fun maybePatchClass(source: FileSource, jar: JarOutputStream, name: String): Boolean {
         val type = getObjectTypeFromFile(name) ?: run {
-            logger.error("Skip patching for {}", name)
+            logger.error("Skip patching for {} because it is not a class file", name)
             return false
         }
 

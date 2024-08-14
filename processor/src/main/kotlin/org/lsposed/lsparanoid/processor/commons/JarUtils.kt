@@ -36,7 +36,7 @@ internal fun JarOutputStream.createFile(name: String, data: ByteArray) {
             logger.info("Duplicated file: {}", name)
         }
     } finally {
-        closeQuietly()
+        closeEntry()
     }
 }
 
@@ -46,6 +46,6 @@ internal fun JarOutputStream.createDirectory(name: String) {
     } catch (ignored: ZipException) {
         // it's normal that the directory already exists
     } finally {
-        closeQuietly()
+        closeEntry()
     }
 }
