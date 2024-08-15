@@ -31,7 +31,7 @@ internal fun JarOutputStream.createFile(name: String, data: ByteArray) {
     } catch (e: ZipException) {
         // it's normal to have duplicated files in META-INF or module-info. do not throw exceptions then.
         if (name.startsWith("META-INF/") || name.contains("module-info.class") || name.contains("module-info")) {
-            logger.warn("Skip duplicate entry {}", name)
+            logger.info("Skip duplicate entry {}", name)
         } else {
             throw e
         }

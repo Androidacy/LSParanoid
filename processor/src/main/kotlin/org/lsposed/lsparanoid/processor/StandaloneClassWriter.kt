@@ -78,7 +78,7 @@ class StandaloneClassWriter : ClassWriter {
         return fileRegistry.findPathForType(type)?.let { _ ->
             getClassMirror(type)
         } ?: run {
-            logger.warn("[getClassMirrorOrObject]: {} not found", type)
+            logger.info("[getClassMirrorOrObject]: {} not found", type)
             getClassMirror(OBJECT_TYPE)
         }
     }
