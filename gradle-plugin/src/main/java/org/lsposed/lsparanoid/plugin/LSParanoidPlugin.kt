@@ -42,6 +42,14 @@ class LSParanoidPlugin : Plugin<Project> {
                     "lsparanoid${variant.name.replaceFirstChar { it.uppercase() }}",
                     LSParanoidTask::class.java
                 ) {
+                    // up to date if java or kotlin compile was not ran
+                    it.outputs.upToDateWhen {
+                        project.tasks.withType(JavaCompile::class.java).any { task ->
+                            task.state.upToDate
+                        } && project.tasks.withType(KotlinCompile::class.java).any { task ->
+                            task.state.upToDate
+                        }
+                    }
                     it.bootClasspath.set(components.sdkComponents.bootClasspath)
                     it.classpath = variant.compileClasspath
                     it.seed.set(extension.seed ?: SecureRandom().nextInt())
