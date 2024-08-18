@@ -44,11 +44,13 @@ class LSParanoidPlugin : Plugin<Project> {
                 ) {
                     // up to date if java or kotlin compile was not ran
                     it.outputs.upToDateWhen {
-                        project.tasks.withType(JavaCompile::class.java).any { task ->
-                            task.state.upToDate
-                        } && project.tasks.withType(KotlinCompile::class.java).any { task ->
-                            task.state.upToDate
+                        for (task in project.tasks.withType(JavaCompile::class.java)) {
+                            if (task.didWork) return@upToDateWhen false
                         }
+                        for (task in project.tasks.withType(KotlinCompile::class.java)) {
+                            if (task.didWork) return@upToDateWhen false
+                        }
+                        true
                     }
                     it.bootClasspath.set(components.sdkComponents.bootClasspath)
                     it.classpath = variant.compileClasspath
