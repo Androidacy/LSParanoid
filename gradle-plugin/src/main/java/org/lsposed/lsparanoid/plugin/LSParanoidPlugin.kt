@@ -42,16 +42,6 @@ class LSParanoidPlugin : Plugin<Project> {
                     "lsparanoid${variant.name.replaceFirstChar { it.uppercase() }}",
                     LSParanoidTask::class.java
                 ) {
-                    // up to date if java or kotlin compile was not ran
-                    it.outputs.upToDateWhen {
-                        for (task in project.tasks.withType(JavaCompile::class.java)) {
-                            if (task.didWork) return@upToDateWhen false
-                        }
-                        for (task in project.tasks.withType(KotlinCompile::class.java)) {
-                            if (task.didWork) return@upToDateWhen false
-                        }
-                        true
-                    }
                     it.bootClasspath.set(components.sdkComponents.bootClasspath)
                     it.classpath = variant.compileClasspath
                     it.seed.set(extension.seed ?: SecureRandom().nextInt())
@@ -65,6 +55,19 @@ class LSParanoidPlugin : Plugin<Project> {
                         LSParanoidTask::dirs,
                         LSParanoidTask::output,
                     )
+                project.afterEvaluate {
+                    project.tasks.withType(JavaCompile::class.java) { javaCompileTask ->
+                        if (javaCompileTask.name.startsWith("compile${variant.name.replaceFirstChar { it.uppercase() }}")) {
+                            task.configure { it.dependsOn(javaCompileTask) }
+                        }
+                    }
+
+                    project.tasks.withType(KotlinCompile::class.java) { kotlinCompileTask ->
+                        if (kotlinCompileTask.name.startsWith("compile${variant.name.replaceFirstChar { it.uppercase() }}")) {
+                            task.configure { it.dependsOn(kotlinCompileTask) }
+                        }
+                    }
+                }
             }
             project.addDependencies()
         }
