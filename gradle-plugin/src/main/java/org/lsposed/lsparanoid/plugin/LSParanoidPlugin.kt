@@ -56,16 +56,18 @@ class LSParanoidPlugin : Plugin<Project> {
                         LSParanoidTask::output,
                     )
                 project.afterEvaluate {
-                    project.tasks.withType(JavaCompile::class.java) { javaCompileTask ->
-                        if (javaCompileTask.name.startsWith("compile${variant.name.replaceFirstChar { it.uppercase() }}")) {
-                            task.configure { it.dependsOn(javaCompileTask) }
-                        }
+                    val dependencyTaskName = if (project.plugins.hasPlugin("com.android.application")) {
+                        "merge${variant.name.replaceFirstChar { it.titlecase() }}Classes"
+                    } else {
+                        "jar" // or bundleLibCompileToJar<VariantName>
                     }
+                    val dependencyTask = project.tasks.findByName(dependencyTaskName)
 
-                    project.tasks.withType(KotlinCompile::class.java) { kotlinCompileTask ->
-                        if (kotlinCompileTask.name.startsWith("compile${variant.name.replaceFirstChar { it.uppercase() }}")) {
-                            task.configure { it.dependsOn(kotlinCompileTask) }
-                        }
+                    if (dependencyTask != null) {
+                        task.configure { it.dependsOn(dependencyTask) }
+                    } else {
+                        // Handle the case where the dependency task is not found, maybe throw an error or log a warning
+                        project.logger.warn("Dependency task '$dependencyTaskName' not found for LSParanoid plugin")
                     }
                 }
             }
