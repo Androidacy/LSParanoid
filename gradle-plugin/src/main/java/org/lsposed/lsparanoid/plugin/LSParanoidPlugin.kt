@@ -34,10 +34,12 @@ class LSParanoidPlugin : Plugin<Project> {
     @Suppress("UnstableApiUsage")
     override fun apply(project: Project) {
         val extension = project.extensions.create("lsparanoid", LSParanoidExtension::class.java)
+
         project.plugins.withType(AndroidBasePlugin::class.java) { _ ->
             val components = project.extensions.getByType(AndroidComponentsExtension::class.java)
             components.onVariants { variant ->
                 if (!extension.variantFilter(variant)) return@onVariants
+
                 val task = project.tasks.register(
                     "lsparanoid${variant.name.replaceFirstChar { it.uppercase() }}",
                     LSParanoidTask::class.java
@@ -48,6 +50,7 @@ class LSParanoidPlugin : Plugin<Project> {
                     it.classFilter = extension.classFilter
                     it.projectName.set("${project.rootProject.name}\$${project.path}")
                 }
+
                 variant.artifacts.forScope(if (extension.includeDependencies) Scope.ALL else Scope.PROJECT)
                     .use(task).toTransform(
                         ScopedArtifact.CLASSES,
@@ -55,27 +58,36 @@ class LSParanoidPlugin : Plugin<Project> {
                         LSParanoidTask::dirs,
                         LSParanoidTask::output,
                     )
-                project.afterEvaluate {
-                    val dependencyTaskName = if (project.plugins.hasPlugin("com.android.application")) {
-                        "merge${variant.name.replaceFirstChar { it.titlecase() }}Classes"
-                    } else {
-                        "jar" // or bundleLibCompileToJar<VariantName>
-                    }
-                    val dependencyTask = project.tasks.findByName(dependencyTaskName)
 
-                    if (dependencyTask != null) {
-                        task.configure { it.dependsOn(dependencyTask) }
-                    } else {
-                        // Handle the case where the dependency task is not found, maybe throw an error or log a warning
-                        project.logger.warn("Dependency task '$dependencyTaskName' not found for LSParanoid plugin")
+                project.afterEvaluate {
+                    project.tasks.withType(JavaCompile::class.java).forEach { javaCompile ->
+                        task.configure { it.dependsOn(javaCompile) }
+                    }
+                    project.tasks.withType(KotlinCompile::class.java).forEach { kotlinCompile ->
+                        task.configure { it.dependsOn(kotlinCompile) }
+                    }
+
+                    project.tasks.withType(JavaCompile::class.java).configureEach { javaCompile ->
+                        task.configure {
+                            it.mustRunAfter(javaCompile)
+                            it.onlyIf { javaCompile.didWork }
+                        }
+                    }
+                    project.tasks.withType(KotlinCompile::class.java).configureEach { kotlinCompile ->
+                        task.configure {
+                            it.mustRunAfter(kotlinCompile)
+                            it.onlyIf { kotlinCompile.didWork }
+                        }
                     }
                 }
             }
             project.addDependencies()
         }
+
         project.tasks.withType(JavaCompile::class.java) {
             it.options.compilerArgs.add("-XDstringConcat=inline")
         }
+        
         project.tasks.withType(KotlinCompile::class.java) {
             it.kotlinOptions.freeCompilerArgs += "-Xstring-concat=inline"
         }
