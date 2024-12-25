@@ -22,5 +22,12 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
     - name: Build with Gradle
       run: ./gradlew build
+      
+    - name: Build samples
+      run: |
+          cd samples
+          ./gradlew :application:assembleRelease :application-global-obfuscate:assembleRelease :library:assembleRelease :library-may-obfuscate:assembleRelease :library-obfuscate:assembleRelease
+      
