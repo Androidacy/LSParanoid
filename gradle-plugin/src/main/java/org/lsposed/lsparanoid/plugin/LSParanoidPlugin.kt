@@ -36,6 +36,9 @@ class LSParanoidPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         val extension = project.extensions.create("lsparanoid", LSParanoidExtension::class.java)
 
+        // Add dependencies early
+        project.addDependencies()
+
         project.plugins.withType(AndroidBasePlugin::class.java) { _ ->
             val components = project.extensions.getByType(AndroidComponentsExtension::class.java)
             components.onVariants { variant ->
@@ -60,35 +63,32 @@ class LSParanoidPlugin : Plugin<Project> {
                         LSParanoidTask::output,
                     )
 
-                project.afterEvaluate {
-                    // Find Java and Kotlin compile tasks specifically for this variant
-                    val variantCompileTasks = project.tasks.filter { task ->
-                        (task is JavaCompile || task is KotlinCompilationTask<*>) &&
-                                task.name.contains(variant.name, ignoreCase = true)
+                // Connect to compile tasks directly without afterEvaluate
+                task.configure { taskObj ->
+                    // Use Android's task providers instead of filtering by name
+                    val javaCompileTask = variant.sources.java?.let {
+                        project.tasks.named("compile${variant.name.capitalize()}JavaWithJavac")
+                    }
+                    if (javaCompileTask != null) {
+                        taskObj.dependsOn(javaCompileTask)
                     }
 
-                    if (variantCompileTasks.isNotEmpty()) {
-                        task.configure {
-                            it.dependsOn(variantCompileTasks)
-                            variantCompileTasks.forEach { compileTask ->
-                                it.mustRunAfter(compileTask)
-                                // Only run if at least one compile task did work
-                                it.onlyIf { compileTask.didWork }
-                            }
-                        }
-                    } else {
-                        // Log a warning if no matching compile tasks are found
-                        project.logger.warn("No compile tasks found for variant ${variant.name} for LSParanoid plugin")
+                    // For Kotlin, we can use a similar approach if available
+                    project.tasks.matching { it is KotlinCompilationTask<*> &&
+                            it.name.contains(variant.name, ignoreCase = true)
+                    }.forEach {
+                        taskObj.dependsOn(it)
+                        taskObj.mustRunAfter(it)
                     }
                 }
             }
-            project.addDependencies()
         }
 
+        // Configure Java and Kotlin compiler options
         project.tasks.withType(JavaCompile::class.java) {
             it.options.compilerArgs.add("-XDstringConcat=inline")
         }
-        
+
         project.tasks.withType(KotlinCompile::class.java) {
             it.kotlinOptions.freeCompilerArgs += "-Xstring-concat=inline"
         }
