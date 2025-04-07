@@ -28,6 +28,7 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.security.SecureRandom
 
 class LSParanoidPlugin : Plugin<Project> {
@@ -61,10 +62,9 @@ class LSParanoidPlugin : Plugin<Project> {
 
                 project.afterEvaluate {
                     // Find Java and Kotlin compile tasks specifically for this variant
-                    val variantCompileTasks = project.tasks.filter { task ->
-                        (task is JavaCompile || task is KotlinCompile<*>) &&
-                                task.name.contains(variant.name, ignoreCase = true)
-                    }
+                    val variantCompileTasks = project.tasks.withType(KotlinCompilationTask::class.java) +
+                            project.tasks.withType(JavaCompile::class.java)
+                        .filter { it.name.contains(variant.name, ignoreCase = true) }
 
                     if (variantCompileTasks.isNotEmpty()) {
                         task.configure {
