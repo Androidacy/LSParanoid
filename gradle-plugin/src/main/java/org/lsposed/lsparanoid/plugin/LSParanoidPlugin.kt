@@ -60,24 +60,24 @@ class LSParanoidPlugin : Plugin<Project> {
                     )
 
                 project.afterEvaluate {
-                    project.tasks.withType(JavaCompile::class.java).forEach { javaCompile ->
-                        task.configure { it.dependsOn(javaCompile) }
-                    }
-                    project.tasks.withType(KotlinCompile::class.java).forEach { kotlinCompile ->
-                        task.configure { it.dependsOn(kotlinCompile) }
+                    // Find Java and Kotlin compile tasks specifically for this variant
+                    val variantCompileTasks = project.tasks.filter { task ->
+                        (task is JavaCompile || task is KotlinCompile<*>) &&
+                                task.name.contains(variant.name, ignoreCase = true)
                     }
 
-                    project.tasks.withType(JavaCompile::class.java).configureEach { javaCompile ->
+                    if (variantCompileTasks.isNotEmpty()) {
                         task.configure {
-                            it.mustRunAfter(javaCompile)
-                            it.onlyIf { javaCompile.didWork }
+                            it.dependsOn(variantCompileTasks)
+                            variantCompileTasks.forEach { compileTask ->
+                                it.mustRunAfter(compileTask)
+                                // Only run if at least one compile task did work
+                                it.onlyIf { compileTask.didWork }
+                            }
                         }
-                    }
-                    project.tasks.withType(KotlinCompile::class.java).configureEach { kotlinCompile ->
-                        task.configure {
-                            it.mustRunAfter(kotlinCompile)
-                            it.onlyIf { kotlinCompile.didWork }
-                        }
+                    } else {
+                        // Log a warning if no matching compile tasks are found
+                        project.logger.warn("No compile tasks found for variant ${variant.name} for LSParanoid plugin")
                     }
                 }
             }
