@@ -70,19 +70,32 @@ class DeobfuscatorGenerator(
 
   private fun ClassVisitor.generateStaticInitializer() {
     newMethod(Opcodes.ACC_STATIC, METHOD_STATIC_INITIALIZER) {
-      val chunks = stringRegistry.getAllChunks()
-      push(chunks.size)
+      val chunkCount = stringRegistry.getChunkCount()
+      push(chunkCount)
       newArray(CHUNKS_ELEMENT_TYPE)
+      // Store the new array into the static field
       putStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
 
-      getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
-      chunks.forEachIndexed { index, chunk ->
-        dup()
-        push(index)
-        push(chunk)
-        arrayStore(CHUNKS_ELEMENT_TYPE)
+      // If there are chunks to add, load the field back onto the stack
+      if (chunkCount > 0) {
+        getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
+        var index = 0
+        stringRegistry.streamChunks { chunk ->
+          dup() // Duplicate the array reference
+          push(index) // Push the index
+          push(chunk) // Push the chunk string
+          arrayStore(CHUNKS_ELEMENT_TYPE) // Store the chunk in the array
+          index++
+        }
+        // Pop the array reference that was loaded by getStatic (if chunkCount > 0)
+        // and duplicated in the loop. The original putStatic already stored it.
+        // If streamChunks did nothing (e.g. 0 chunks), this pop is not needed as getStatic wasn't called.
+        // However, the structure with index ensures it's balanced if chunks were processed.
+        // If chunkCount > 0, one array reference remains on stack after loop.
+        pop()
       }
-      pop()
+      // Ensure stack is balanced: if chunkCount was 0, no putStatic/getStatic/pop happened here.
+      // If chunkCount > 0, array was putStatic, then getStatic, then loop, then pop. Correct.
     }
   }
 
