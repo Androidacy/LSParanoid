@@ -22,7 +22,12 @@ import org.lsposed.lsparanoid.RandomHelper
 
 interface StringRegistry {
   fun registerString(string: String): Long
+
+  @Deprecated("Use streamChunks for better memory efficiency", ReplaceWith("streamChunks(consumer)"))
   fun getAllChunks(): List<String>
+
+  fun streamChunks(consumer: (String) -> Unit)
+  fun getChunkCount(): Int
 }
 
 class StringRegistryImpl(
@@ -53,7 +58,34 @@ class StringRegistryImpl(
     return id
   }
 
+  @Deprecated("Use streamChunks for better memory efficiency", ReplaceWith("streamChunks(consumer)"))
   override fun getAllChunks(): List<String> {
-    return builder.toString().chunked(DeobfuscatorHelper.MAX_CHUNK_LENGTH)
+    // This implementation remains for compatibility but should not be used for large datasets.
+    val chunks = mutableListOf<String>()
+    streamChunks { chunks.add(it) }
+    return chunks
+  }
+
+  override fun streamChunks(consumer: (String) -> Unit) {
+    val totalLength = builder.length
+    if (totalLength == 0) {
+      return
+    }
+    var currentIndex = 0
+    while (currentIndex < totalLength) {
+      val endIndex = kotlin.math.min(currentIndex + DeobfuscatorHelper.MAX_CHUNK_LENGTH, totalLength)
+      // Substring still creates a new string, but it's one chunk at a time
+      // instead of builder.toString() creating one giant string first.
+      consumer(builder.substring(currentIndex, endIndex))
+      currentIndex = endIndex
+    }
+  }
+
+  override fun getChunkCount(): Int {
+    val totalLength = builder.length
+    if (totalLength == 0) {
+      return 0
+    }
+    return (totalLength + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH
   }
 }
