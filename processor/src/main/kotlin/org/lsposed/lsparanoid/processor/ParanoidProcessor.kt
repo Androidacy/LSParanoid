@@ -31,9 +31,11 @@ import org.objectweb.asm.commons.Method
 import java.nio.file.Path
 import java.util.jar.JarOutputStream
 
+// MEMORY FIX: Loading all inputs at once -> Processing inputs individually.
+// IMPACT: Memory usage is proportional to the largest input, not all of them.
 class ParanoidProcessor(
-    seed: Int,
-    classpath: Set<Path>,
+    private val seed: Int,
+    private val classpath: Set<Path>,
     private val inputs: List<Path>,
     private val output: JarOutputStream,
     private val asmApi: Int = Opcodes.ASM9,
@@ -43,13 +45,18 @@ class ParanoidProcessor(
 
     private val logger = getLogger()
 
-    private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath + inputs)
     private val stringRegistry = StringRegistryImpl(seed)
 
     fun process() {
         dumpConfiguration()
 
-        val analysisResult = Analyzer(grip, classFilter).analyze(inputs)
+        val analysisResult = AnalysisResult(mutableMapOf(), mutableSetOf())
+        inputs.forEach { input ->
+            val grip = GripFactory.newInstance(asmApi).create(classpath + input)
+            val result = Analyzer(grip, classFilter).analyze(listOf(input))
+            analysisResult.configurationsByType.putAll(result.configurationsByType)
+            analysisResult.obfuscatedTypes.addAll(result.obfuscatedTypes)
+        }
         analysisResult.dump()
 
         val deobfuscator = createDeobfuscator()
@@ -60,20 +67,19 @@ class ParanoidProcessor(
         }
 
         try {
+            val grip = GripFactory.newInstance(asmApi).create(classpath + inputs)
             Patcher(
                 deobfuscator,
                 stringRegistry,
                 analysisResult,
                 grip.classRegistry,
-                grip.fileRegistry,
                 asmApi
             ).copyAndPatchClasses(sources, output)
             val deobfuscatorBytes =
                 DeobfuscatorGenerator(
                     deobfuscator,
                     stringRegistry,
-                    grip.classRegistry,
-                    grip.fileRegistry
+                    grip.classRegistry
                 ).generateDeobfuscator()
             output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
         } finally {
