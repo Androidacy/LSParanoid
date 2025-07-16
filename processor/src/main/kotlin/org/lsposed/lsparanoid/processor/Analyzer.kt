@@ -36,7 +36,7 @@ class Analyzer(private val grip: Grip, private val classFilter: ((className: Str
       { it },
       { createObfuscationConfiguration(it) }
     )
-    return AnalysisResult(obfuscationConfigurationsByType)
+    return AnalysisResult(obfuscationConfigurationsByType.toMutableMap(), typesToObfuscate.toMutableSet())
   }
 
   private fun findTypesToObfuscate(inputs: List<Path>): Set<Type.Object> {

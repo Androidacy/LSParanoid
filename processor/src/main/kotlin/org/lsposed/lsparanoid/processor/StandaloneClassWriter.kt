@@ -27,28 +27,25 @@ import org.lsposed.lsparanoid.processor.logging.getLogger
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 
+// MEMORY FIX: Remove FileRegistry dependency.
+// IMPACT: Simplifies the class writer, avoids holding file paths in memory.
 class StandaloneClassWriter : ClassWriter {
     private val logger = getLogger()
     private val classRegistry: ClassRegistry
-    private val fileRegistry: FileRegistry
 
     constructor(
         flags: Int,
-        classRegistry: ClassRegistry,
-        fileRegistry: FileRegistry
+        classRegistry: ClassRegistry
     ) : super(flags) {
         this.classRegistry = classRegistry
-        this.fileRegistry = fileRegistry
     }
 
     constructor(
         classReader: ClassReader,
         flags: Int,
-        classRegistry: ClassRegistry,
-        fileRegistry: FileRegistry
+        classRegistry: ClassRegistry
     ) : super(classReader, flags) {
         this.classRegistry = classRegistry
-        this.fileRegistry = fileRegistry
     }
 
     override fun getCommonSuperClass(type1: String, type2: String): String {
@@ -75,9 +72,9 @@ class StandaloneClassWriter : ClassWriter {
     }
 
     private fun ClassRegistry.getClassMirrorOrObject(type: Type.Object): ClassMirror {
-        return fileRegistry.findPathForType(type)?.let { _ ->
+        return try {
             getClassMirror(type)
-        } ?: run {
+        } catch (exception: Exception) {
             logger.info("[getClassMirrorOrObject]: {} not found", type)
             getClassMirror(OBJECT_TYPE)
         }
