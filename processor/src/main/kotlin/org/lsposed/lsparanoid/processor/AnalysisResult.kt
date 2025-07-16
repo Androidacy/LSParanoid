@@ -17,8 +17,16 @@
 
 package org.lsposed.lsparanoid.processor
 
-import com.joom.grip.mirrors.Type
+import org.objectweb.asm.Type
 
-interface ObfuscatedTypeRegistry {
-  fun shouldObfuscate(type: Type.Object): Boolean
+data class AnalysisResult(
+    val configurationsByType: Map<Type, ClassConfiguration>,
+    val obfuscatedTypes: Set<Type>
+) {
+    operator fun plus(other: AnalysisResult): AnalysisResult {
+        return AnalysisResult(
+            configurationsByType + other.configurationsByType,
+            obfuscatedTypes + other.obfuscatedTypes
+        )
+    }
 }

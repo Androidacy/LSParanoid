@@ -1,6 +1,5 @@
 /*
  * Copyright 2021 Michael Rozumyanskiy
- * Copyright 2023 LSPosed
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +20,12 @@ import com.joom.grip.ClassRegistry
 import com.joom.grip.FileRegistry
 import com.joom.grip.io.FileSource
 import com.joom.grip.mirrors.Type
-import com.joom.grip.mirrors.getObjectTypeByInternalName
-import org.lsposed.lsparanoid.processor.commons.createDirectory
-import org.lsposed.lsparanoid.processor.commons.createFile
+import org.lsposed.lsparanoid.processor.commons.closeQuietly
 import org.lsposed.lsparanoid.processor.logging.getLogger
 import org.lsposed.lsparanoid.processor.model.Deobfuscator
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Opcodes
 import java.util.jar.JarOutputStream
 
 class Patcher(
@@ -38,92 +34,54 @@ class Patcher(
     private val analysisResult: AnalysisResult,
     private val classRegistry: ClassRegistry,
     private val fileRegistry: FileRegistry,
-    private val asmApi: Int,
+    private val asmApi: Int
 ) {
 
     private val logger = getLogger()
 
-    fun copyAndPatchClasses(sources: Sequence<FileSource>, jar: JarOutputStream) {
-        sources.forEach { source ->
-            copyAndPatchClasses(source, jar)
-        }
-    }
-
-    private fun copyAndPatchClasses(source: FileSource, jar: JarOutputStream) {
-        logger.info("Patching...")
-        logger.info("   Input: {}", source)
-
-        source.listFiles { name, type ->
-            when (type) {
-                FileSource.EntryType.CLASS -> copyAndPatchClass(source, jar, name)
-                FileSource.EntryType.FILE -> jar.createFile(name, source.readFile(name))
-                FileSource.EntryType.DIRECTORY -> jar.createDirectory(name)
+    fun copyAndPatchClasses(sources: List<FileSource>, sink: JarOutputStream) {
+        for (source in sources) {
+            try {
+                copyAndPatchClasses(source, sink)
+            } finally {
+                source.closeQuietly()
             }
         }
     }
 
-    private fun copyAndPatchClass(source: FileSource, jar: JarOutputStream, name: String) {
-        if (!maybePatchClass(source, jar, name)) {
-            jar.createFile(name, source.readFile(name))
-        }
-    }
-
-    private fun getObjectTypeFromFile(relativePath: String): Type.Object? {
-        if (relativePath.endsWith(".class")) {
-            val internalName = relativePath.substringBeforeLast(".class").replace('\\', '/')
-            return getObjectTypeByInternalName(internalName)
-        }
-        return null
-    }
-
-    private fun maybePatchClass(source: FileSource, jar: JarOutputStream, name: String): Boolean {
-        val type = getObjectTypeFromFile(name) ?: run {
-            logger.error("Skip patching for {} because it is not a class file", name)
-            return false
-        }
-
-        val configuration = analysisResult.configurationsByType[type]
-        val hasObfuscateAnnotation =
-            OBFUSCATE_TYPE in classRegistry.getClassMirror(type).annotations
-        if (configuration == null && !hasObfuscateAnnotation) {
-            return false
-        }
-
-        logger.debug("Patching class {}", name)
-        val reader = ClassReader(source.readFile(name))
-        val writer = StandaloneClassWriter(
-            ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES,
-            classRegistry,
-            fileRegistry
-        )
-        val shouldObfuscateLiterals = reader.access and Opcodes.ACC_INTERFACE == 0
-        val patcher =
-            writer
-                .wrapIf(hasObfuscateAnnotation) { RemoveObfuscateClassPatcher(asmApi, it) }
-                .wrapIf(configuration != null) {
-                    StringLiteralsClassPatcher(
-                        deobfuscator,
-                        stringRegistry,
-                        asmApi,
-                        it
-                    )
+    private fun copyAndPatchClasses(source: FileSource, sink: JarOutputStream) {
+        source.listFiles { path, type ->
+            when (type) {
+                FileSource.EntryType.CLASS -> {
+                    logger.debug("Patching {}...", path)
+                    val classReader = ClassReader(source.readFile(path))
+                    val classWriter = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS, classRegistry, fileRegistry)
+                    val classVisitor = createClassVisitor(classWriter)
+                    classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES)
+                    sink.putNextEntry(java.util.jar.JarEntry(path))
+                    sink.write(classWriter.toByteArray())
                 }
-                .wrapIf(configuration != null && shouldObfuscateLiterals) {
-                    StringConstantsClassPatcher(
-                        configuration!!,
-                        asmApi,
-                        it
-                    )
+                FileSource.EntryType.FILE -> {
+                    logger.debug("Copying {}...", path)
+                    sink.putNextEntry(java.util.jar.JarEntry(path))
+                    sink.write(source.readFile(path))
                 }
-        reader.accept(patcher, ClassReader.SKIP_FRAMES)
-        jar.createFile(name, writer.toByteArray())
-        return true
+                FileSource.EntryType.DIRECTORY -> {
+                    logger.debug("Copying {}...", path)
+                    sink.putNextEntry(java.util.jar.JarEntry(path))
+                }
+            }
+        }
     }
 
-    private inline fun ClassVisitor.wrapIf(
-        condition: Boolean,
-        wrapper: (ClassVisitor) -> ClassVisitor
-    ): ClassVisitor {
-        return if (condition) wrapper(this) else this
+    private fun createClassVisitor(classVisitor: ClassVisitor): ClassVisitor {
+        val stringLiteralsPatcher = StringLiteralsClassPatcher(classVisitor, deobfuscator.deobfuscationMethod, stringRegistry)
+        val stringConstantsPatcher =
+            StringConstantsClassPatcher(stringLiteralsPatcher, deobfuscator.deobfuscationMethod, stringRegistry, analysisResult)
+        return RemoveObfuscateClassPatcher(stringConstantsPatcher, analysisResult.obfuscatedTypes)
+    }
+
+    private fun isObfuscated(type: Type.Object): Boolean {
+        return type in analysisResult.obfuscatedTypes
     }
 }

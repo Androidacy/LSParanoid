@@ -18,45 +18,75 @@
 package org.lsposed.lsparanoid.processor
 
 import com.joom.grip.Grip
-import com.joom.grip.and
+import com.joom.grip.annotatedWith
 import com.joom.grip.classes
 import com.joom.grip.fields
 import com.joom.grip.from
-import com.joom.grip.isFinal
-import com.joom.grip.isStatic
+import com.joom.grip.mirrors.ClassMirror
 import com.joom.grip.mirrors.FieldMirror
 import com.joom.grip.mirrors.Type
-import com.joom.grip.withFieldInitializer
+import com.joom.grip.mirrors.getObjectType
+import com.joom.grip.mirrors.isFinal
+import com.joom.grip.mirrors.isStatic
+import org.lsposed.lsparanoid.processor.logging.getLogger
 import java.nio.file.Path
 
-class Analyzer(private val grip: Grip, private val classFilter: ((className: String) -> Boolean)?) {
-  fun analyze(inputs: List<Path>): AnalysisResult {
-    val typesToObfuscate = findTypesToObfuscate(inputs)
-    val obfuscationConfigurationsByType = typesToObfuscate.associateBy(
-      { it },
-      { createObfuscationConfiguration(it) }
-    )
-    return AnalysisResult(obfuscationConfigurationsByType)
-  }
+class Analyzer(
+    private val grip: Grip,
+    private val classFilter: ((className: String) -> Boolean)?
+) {
 
-  private fun findTypesToObfuscate(inputs: List<Path>): Set<Type.Object> {
-    val registry = newObfuscatedTypeRegistry(grip.classRegistry).withCache()
-    val query = grip select classes from inputs where registry.shouldObfuscate(classFilter)
-    return query.execute().types.toHashSet()
-  }
+    private val logger = getLogger()
 
-  private fun createObfuscationConfiguration(type: Type.Object): ClassConfiguration {
-    val fields = findConstantStringFields(type)
-    val stringConstantsByName = fields.associateBy(
-      { it.name },
-      { it.value as String }
-    )
-    return ClassConfiguration(type, stringConstantsByName)
-  }
+    fun analyze(paths: List<Path>): AnalysisResult {
+        val configuration = buildObfuscationConfiguration(paths)
+        val obfuscatedTypes = findObfuscatedTypes(paths)
+        return AnalysisResult(configuration, obfuscatedTypes)
+    }
 
-  private fun findConstantStringFields(type: Type.Object): Collection<FieldMirror> {
-    val mirror = grip.classRegistry.getClassMirror(type)
-    val query = grip select fields from mirror where (isStatic() and isFinal() and withFieldInitializer<String>())
-    return query.execute()[type].orEmpty()
-  }
+    private fun buildObfuscationConfiguration(paths: List<Path>): Map<Type.Object, ClassConfiguration> {
+        val query = grip.select(classes)
+            .from(paths)
+            .where(annotatedWith(Types.OBFUSCATE_TYPE))
+
+        return query.execute().classes.associate { classMirror ->
+            logger.info("Class to obfuscate: {}", classMirror.type.className)
+            val configuration = buildClassConfiguration(classMirror)
+            classMirror.type to configuration
+        }
+    }
+
+    private fun buildClassConfiguration(classMirror: ClassMirror): ClassConfiguration {
+        return ClassConfiguration(findConstantStringFields(classMirror))
+    }
+
+    private fun findConstantStringFields(classMirror: ClassMirror): Map<String, String> {
+        return classMirror.fields.asSequence()
+            .filter { it.isStatic && it.isFinal }
+            .filter { it.type == STRING_TYPE }
+            .mapNotNull { field ->
+                val value = field.value
+                if (value is String) {
+                    logger.info("    Found constant string: {}.{} = \"{}\"", classMirror.type.className, field.name, value)
+                    field.name to value
+                } else {
+                    null
+                }
+            }
+            .toMap()
+    }
+
+    private fun findObfuscatedTypes(paths: List<Path>): Set<Type.Object> {
+        val query = grip.select(classes)
+            .from(paths)
+            .where(classFilter?.let { filter -> { _, classMirror -> filter(classMirror.type.className) } })
+
+        return query.execute().classes.map { it.type }.toSet()
+    }
+
+    private fun FieldMirror.toField() = Field(owner.type, name, type)
+
+    private companion object {
+        private val STRING_TYPE = getObjectType<String>()
+    }
 }

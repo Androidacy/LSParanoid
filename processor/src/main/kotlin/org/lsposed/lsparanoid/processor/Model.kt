@@ -17,13 +17,6 @@
 
 package org.lsposed.lsparanoid.processor
 
-import com.joom.grip.mirrors.Type
-
-data class AnalysisResult(
-  val configurationsByType: Map<Type.Object, ClassConfiguration>
-)
-
 data class ClassConfiguration(
-  val container: Type.Object,
-  val constantStringsByFieldName: Map<String, String>
+    val constantStringsByFieldName: Map<String, String>
 )

@@ -1,6 +1,5 @@
 /*
  * Copyright 2021 Michael Rozumyanskiy
- * Copyright 2023 LSPosed
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,97 +16,71 @@
 
 package org.lsposed.lsparanoid.processor
 
-import com.joom.grip.mirrors.toAsmType
-import org.lsposed.lsparanoid.processor.logging.getLogger
 import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes.ACC_PRIVATE
-import org.objectweb.asm.Opcodes.ACC_STATIC
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.commons.GeneratorAdapter
 import org.objectweb.asm.commons.Method
 
 class StringConstantsClassPatcher(
-  private val configuration: ClassConfiguration,
-  asmApi: Int,
-  delegate: ClassVisitor,
-) : ClassVisitor(asmApi, delegate) {
+    classVisitor: ClassVisitor,
+    private val deobfuscationMethod: Method,
+    private val stringRegistry: StringRegistry,
+    private val analysisResult: AnalysisResult
+) : ClassVisitor(Opcodes.ASM9, classVisitor) {
 
-  private val logger = getLogger()
+    private lateinit var classType: Type
+    private var isClassWithObfuscatedStrings = false
 
-  private var isStaticInitializerPatched = false
-
-  override fun visit(
-    version: Int,
-    access: Int,
-    name: String,
-    signature: String?,
-    superName: String?,
-    interfaces: Array<out String>?
-  ) {
-    super.visit(version, access, name, signature, superName, interfaces)
-    isStaticInitializerPatched = configuration.constantStringsByFieldName.isEmpty()
-  }
-
-  override fun visitField(access: Int, name: String, desc: String, signature: String?, value: Any?): FieldVisitor? {
-    val newValue = if (name in configuration.constantStringsByFieldName) null else value
-    return super.visitField(access, name, desc, signature, newValue)
-  }
-
-  override fun visitMethod(
-    access: Int,
-    name: String,
-    desc: String,
-    signature: String?,
-    exceptions: Array<out String>?
-  ): MethodVisitor {
-    val visitor = super.visitMethod(access, name, desc, signature, exceptions)
-    if (name == STATIC_INITIALIZER_METHOD.name) {
-      return createStaticInitializerPatcher(visitor, access, name, desc)
-    } else {
-      return visitor
-    }
-  }
-
-  override fun visitEnd() {
-    if (!isStaticInitializerPatched) {
-      GeneratorAdapter(ACC_PRIVATE or ACC_STATIC, STATIC_INITIALIZER_METHOD, null, null, this).apply {
-        visitCode()
-        returnValue()
-        endMethod()
-      }
+    override fun visit(
+        version: Int,
+        access: Int,
+        name: String,
+        signature: String?,
+        superName: String?,
+        interfaces: Array<String>?
+    ) {
+        classType = Type.getObjectType(name)
+        isClassWithObfuscatedStrings = classType in analysisResult.configurationsByType
+        super.visit(version, access, name, signature, superName, interfaces)
     }
 
-    super.visitEnd()
-  }
-
-  private fun createStaticInitializerPatcher(
-    visitor: MethodVisitor,
-    access: Int,
-    name: String,
-    desc: String
-  ): MethodVisitor {
-    if (!isStaticInitializerPatched) {
-      isStaticInitializerPatched = true
-      return object : GeneratorAdapter(api, visitor, access, name, desc) {
-        override fun visitCode() {
-          logger.info("{}:", configuration.container.internalName)
-          logger.info("  Patching <clinit>...")
-          super.visitCode()
-          for ((field, value) in configuration.constantStringsByFieldName) {
-            push(value)
-            putStatic(configuration.container.toAsmType(), field, STRING_TYPE)
-          }
+    override fun visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: Array<String>?
+    ): MethodVisitor? {
+        val methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+        if (methodVisitor != null && isClassWithObfuscatedStrings && name == "<clinit>") {
+            return stringRegistry.createStringConstantsMethodPatcher(methodVisitor, access, name, descriptor)
         }
-      }
-    } else {
-      return visitor
+        return methodVisitor
     }
-  }
 
-  companion object {
-    private val STATIC_INITIALIZER_METHOD = Method("<clinit>", Type.VOID_TYPE, arrayOf())
-    private val STRING_TYPE = Type.getType(String::class.java)
-  }
+    private fun StringRegistry.createStringConstantsMethodPatcher(
+        methodVisitor: MethodVisitor,
+        access: Int,
+        name: String,
+        descriptor: String
+    ): MethodVisitor {
+        return object : GeneratorAdapter(Opcodes.ASM9, methodVisitor, access, name, descriptor) {
+            override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
+                if (opcode == Opcodes.PUTSTATIC && Type.getObjectType(owner) == classType) {
+                    val configuration = analysisResult.configurationsByType[classType]
+                    if (configuration != null) {
+                        val string = configuration.constantStringsByFieldName[name]
+                        if (string != null) {
+                            pop()
+                            push(registerString(string))
+                            invokeStatic(deobfuscationMethod.owner, deobfuscationMethod)
+                        }
+                    }
+                }
+                super.visitFieldInsn(opcode, owner, name, descriptor)
+            }
+        }
+    }
 }

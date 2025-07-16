@@ -1,6 +1,5 @@
 /*
  * Copyright 2021 Michael Rozumyanskiy
- * Copyright 2023 LSPosed
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +18,18 @@ package org.lsposed.lsparanoid.processor
 
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 
 class RemoveObfuscateClassPatcher(
-  asmApi: Int,
-  delegate: ClassVisitor,
-) : ClassVisitor(asmApi, delegate) {
+    classVisitor: ClassVisitor,
+    private val obfuscatedTypes: Set<Type>
+) : ClassVisitor(Opcodes.ASM9, classVisitor) {
 
-  private val obfuscateDescriptor = OBFUSCATE_TYPE.descriptor
-
-  override fun visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor? {
-    return if (obfuscateDescriptor != desc) super.visitAnnotation(desc, visible) else null
-  }
+    override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+        if (descriptor == Types.OBFUSCATE_TYPE.descriptor) {
+            return null
+        }
+        return super.visitAnnotation(descriptor, visible)
+    }
 }

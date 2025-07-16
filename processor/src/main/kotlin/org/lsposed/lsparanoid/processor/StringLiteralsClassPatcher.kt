@@ -1,6 +1,5 @@
 /*
  * Copyright 2021 Michael Rozumyanskiy
- * Copyright 2023 LSPosed
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,60 +16,61 @@
 
 package org.lsposed.lsparanoid.processor
 
-import com.joom.grip.mirrors.toAsmType
-import org.lsposed.lsparanoid.processor.logging.getLogger
-import org.lsposed.lsparanoid.processor.model.Deobfuscator
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.GeneratorAdapter
+import org.objectweb.asm.commons.Method
 
 class StringLiteralsClassPatcher(
-  private val deobfuscator: Deobfuscator,
-  private val stringRegistry: StringRegistry,
-  asmApi: Int,
-  delegate: ClassVisitor,
-) : ClassVisitor(asmApi, delegate) {
+    classVisitor: ClassVisitor,
+    private val deobfuscationMethod: Method,
+    private val stringRegistry: StringRegistry
+) : ClassVisitor(Opcodes.ASM9, classVisitor) {
 
-  private val logger = getLogger()
+    private var isInterface: Boolean = false
 
-  private var className: String = ""
-
-  override fun visit(
-    version: Int,
-    access: Int,
-    name: String,
-    signature: String?,
-    superName: String?,
-    interfaces: Array<out String>?
-  ) {
-    super.visit(version, access, name, signature, superName, interfaces)
-    className = name
-  }
-
-  override fun visitMethod(
-    access: Int,
-    name: String,
-    desc: String,
-    signature: String?,
-    exceptions: Array<out String>?
-  ): MethodVisitor {
-    val visitor = super.visitMethod(access, name, desc, signature, exceptions)
-    return object : GeneratorAdapter(api, visitor, access, name, desc) {
-      override fun visitLdcInsn(constant: Any) {
-        if (constant is String) {
-          replaceStringWithDeobfuscationMethod(constant)
-        } else {
-          super.visitLdcInsn(constant)
-        }
-      }
-
-      private fun replaceStringWithDeobfuscationMethod(string: String) {
-        logger.info("{}.{}{}:", className, name, desc)
-        logger.info("  Obfuscating string literal: \"{}\"", string)
-        val stringId = stringRegistry.registerString(string)
-        push(stringId)
-        invokeStatic(deobfuscator.type.toAsmType(), deobfuscator.deobfuscationMethod)
-      }
+    override fun visit(
+        version: Int,
+        access: Int,
+        name: String,
+        signature: String?,
+        superName: String?,
+        interfaces: Array<String>?
+    ) {
+        isInterface = (access and Opcodes.ACC_INTERFACE) != 0
+        super.visit(version, access, name, signature, superName, interfaces)
     }
-  }
+
+    override fun visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: Array<String>?
+    ): MethodVisitor? {
+        val methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+        if (methodVisitor != null && !isInterface) {
+            return stringRegistry.createStringLiteralsMethodPatcher(methodVisitor, access, name, descriptor)
+        }
+        return methodVisitor
+    }
+
+    private fun StringRegistry.createStringLiteralsMethodPatcher(
+        methodVisitor: MethodVisitor,
+        access: Int,
+        name: String,
+        descriptor: String
+    ): MethodVisitor {
+        return object : GeneratorAdapter(Opcodes.ASM9, methodVisitor, access, name, descriptor) {
+            override fun visitLdcInsn(value: Any) {
+                if (value is String) {
+                    push(registerString(value))
+                    invokeStatic(deobfuscationMethod.owner, deobfuscationMethod)
+                } else {
+                    super.visitLdcInsn(value)
+                }
+            }
+        }
+    }
 }

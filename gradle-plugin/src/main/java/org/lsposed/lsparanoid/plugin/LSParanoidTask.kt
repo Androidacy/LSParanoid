@@ -23,12 +23,20 @@ import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.*
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.CompileClasspath
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 import org.lsposed.lsparanoid.processor.ParanoidProcessor
 import java.io.BufferedOutputStream
 import java.io.FileOutputStream
 import java.util.jar.JarOutputStream
-import javax.inject.Inject
 
 @CacheableTask
 abstract class LSParanoidTask : DefaultTask() {
@@ -61,7 +69,8 @@ abstract class LSParanoidTask : DefaultTask() {
 
     @TaskAction
     fun taskAction() {
-        val inputs = jars.get() + dirs.get()
+        val inputs = (jars.get() + dirs.get()).map { it.asFile.toPath() }
+        val classpath = bootClasspath.get().map { it.asFile.toPath() } + this.classpath.files.map { it.toPath() }
         JarOutputStream(
             BufferedOutputStream(
                 FileOutputStream(
@@ -71,9 +80,8 @@ abstract class LSParanoidTask : DefaultTask() {
         ).use { jarOutput ->
             ParanoidProcessor(
                 seed = seed.get(),
-                inputs = inputs.map { it.asFile.toPath() },
-                classpath = bootClasspath.get().map { it.asFile.toPath() }
-                    .toSet() + classpath.files.map { it.toPath() },
+                inputs = inputs,
+                classpath = classpath.toSet(),
                 output = jarOutput,
                 projectName = projectName.get(),
                 classFilter = classFilter

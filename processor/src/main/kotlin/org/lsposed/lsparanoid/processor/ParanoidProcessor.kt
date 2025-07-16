@@ -19,6 +19,7 @@ package org.lsposed.lsparanoid.processor
 
 import com.joom.grip.Grip
 import com.joom.grip.GripFactory
+import com.joom.grip.io.FileSource
 import com.joom.grip.io.IoFactory
 import com.joom.grip.mirrors.getObjectTypeByInternalName
 import org.lsposed.lsparanoid.processor.commons.closeQuietly
@@ -33,7 +34,7 @@ import java.util.jar.JarOutputStream
 
 class ParanoidProcessor(
     seed: Int,
-    classpath: Set<Path>,
+    private val classpath: Set<Path>,
     private val inputs: List<Path>,
     private val output: JarOutputStream,
     private val asmApi: Int = Opcodes.ASM9,
@@ -42,22 +43,23 @@ class ParanoidProcessor(
 ) {
 
     private val logger = getLogger()
-
-    private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath + inputs)
+    private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath)
     private val stringRegistry = StringRegistryImpl(seed)
 
     fun process() {
         dumpConfiguration()
 
-        val analysisResult = Analyzer(grip, classFilter).analyze(inputs)
-        analysisResult.dump()
+        val analysisResult = inputs.map {
+            val grip = GripFactory.newInstance(asmApi).create(it)
+            Analyzer(grip, classFilter).analyze(listOf(it)).also {
+                it.dump()
+            }
+        }.reduce { acc, analysisResult -> acc + analysisResult }
 
         val deobfuscator = createDeobfuscator()
         logger.info("Prepare to generate {}", deobfuscator)
 
-        val sources = inputs.asSequence().map { input ->
-            IoFactory.createFileSource(input)
-        }
+        val sources = inputs.map { IoFactory.createFileSource(it) }
 
         try {
             Patcher(
@@ -68,18 +70,16 @@ class ParanoidProcessor(
                 grip.fileRegistry,
                 asmApi
             ).copyAndPatchClasses(sources, output)
-            val deobfuscatorBytes =
-                DeobfuscatorGenerator(
-                    deobfuscator,
-                    stringRegistry,
-                    grip.classRegistry,
-                    grip.fileRegistry
-                ).generateDeobfuscator()
+
+            val deobfuscatorBytes = DeobfuscatorGenerator(
+                deobfuscator,
+                stringRegistry,
+                grip.classRegistry,
+                grip.fileRegistry
+            ).generateDeobfuscator()
             output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
         } finally {
-            sources.forEach { source ->
-                source.closeQuietly()
-            }
+            sources.forEach(FileSource::closeQuietly)
         }
     }
 
@@ -94,8 +94,7 @@ class ParanoidProcessor(
             logger.info("No classes to obfuscate")
         } else {
             logger.info("Classes to obfuscate:")
-            configurationsByType.forEach {
-                val (type, configuration) = it
+            configurationsByType.forEach { (type, configuration) ->
                 logger.info("  {}:", type.internalName)
                 configuration.constantStringsByFieldName.forEach { (field, string) ->
                     logger.info("    {} = \"{}\"", field, string)
