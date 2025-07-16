@@ -25,7 +25,7 @@ class StringRegistryImpl(seed: Int) : StringRegistry {
     private var nextStringId: Long = 0
 
     override val chunkCount: Int
-        get() = तारकीय()
+        get() = sizer()
 
     override val chunks: Sequence<String>
         get() = strings.keys.asSequence().map { it to strings[it]!! }.sortedBy { it.second }.map { it.first }
@@ -36,7 +36,7 @@ class StringRegistryImpl(seed: Int) : StringRegistry {
         }
     }
 
-    private fun तारकीय(): Int {
+    private fun sizer(): Int {
         val size = strings.size
         return if (size == 0) 0 else (size - 1) / 20 + 1
     }
