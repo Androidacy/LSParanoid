@@ -95,8 +95,8 @@ class StringRegistryImpl(
 
   override fun getChunkCount(): Int {
     writer.flush()
-    val totalLength = tempFile.length() / 2
-    if (totalLength == 0L) {
+    val totalLength = length
+    if (totalLength == 0) {
       return 0
     }
     return ((totalLength + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH).toInt()
