@@ -29,22 +29,18 @@ import org.objectweb.asm.Opcodes.ACC_SUPER
 import org.objectweb.asm.Type
 import org.objectweb.asm.commons.Method
 
-// MEMORY FIX: Remove FileRegistry dependency.
-// IMPACT: Simplifies the generator, avoids holding file paths in memory.
 class DeobfuscatorGenerator(
-    private val deobfuscator: Deobfuscator,
-    private val stringRegistry: StringRegistry,
-    private val classRegistry: ClassRegistry
+  private val deobfuscator: Deobfuscator,
+  private val stringRegistry: StringRegistry,
+  private val classRegistry: ClassRegistry,
+  private val fileRegistry: FileRegistry
 ) {
 
-    fun generateDeobfuscator(): ByteArray {
-        val writer = StandaloneClassWriter(
-            ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES,
-            classRegistry
-        )
-        writer.visit(
-            Opcodes.V1_6,
-            ACC_PUBLIC or ACC_SUPER,
+  fun generateDeobfuscator(): ByteArray {
+    val writer = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES, classRegistry, fileRegistry)
+    writer.visit(
+      Opcodes.V1_6,
+      ACC_PUBLIC or ACC_SUPER,
       deobfuscator.type.internalName,
       null,
       OBJECT_TYPE.internalName,
