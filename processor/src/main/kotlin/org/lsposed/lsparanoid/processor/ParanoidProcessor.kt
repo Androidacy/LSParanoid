@@ -59,26 +59,28 @@ class ParanoidProcessor(
             IoFactory.createFileSource(input)
         }
 
-        try {
-            Patcher(
-                deobfuscator,
-                stringRegistry,
-                analysisResult,
-                grip.classRegistry,
-                grip.fileRegistry,
-                asmApi
-            ).copyAndPatchClasses(sources, output)
-            val deobfuscatorBytes =
-                DeobfuscatorGenerator(
+        stringRegistry.use { stringRegistry ->
+            try {
+                Patcher(
                     deobfuscator,
                     stringRegistry,
+                    analysisResult,
                     grip.classRegistry,
-                    grip.fileRegistry
-                ).generateDeobfuscator()
-            output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
-        } finally {
-            sources.forEach { source ->
-                source.closeQuietly()
+                    grip.fileRegistry,
+                    asmApi
+                ).copyAndPatchClasses(sources, output)
+                val deobfuscatorBytes =
+                    DeobfuscatorGenerator(
+                        deobfuscator,
+                        stringRegistry,
+                        grip.classRegistry,
+                        grip.fileRegistry
+                    ).generateDeobfuscator()
+                output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
+            } finally {
+                sources.forEach { source ->
+                    source.closeQuietly()
+                }
             }
         }
     }
