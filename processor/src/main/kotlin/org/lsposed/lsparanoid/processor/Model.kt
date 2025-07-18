@@ -19,14 +19,11 @@ package org.lsposed.lsparanoid.processor
 
 import com.joom.grip.mirrors.Type
 
-// MEMORY FIX: Immutable map -> Mutable map.
-// IMPACT: Avoids creating new map instances, reducing GC overhead.
 data class AnalysisResult(
-    val configurationsByType: MutableMap<Type.Object, ClassConfiguration>,
-    val obfuscatedTypes: MutableSet<Type.Object>
+  val configurationsByType: Map<Type.Object, ClassConfiguration>
 )
 
 data class ClassConfiguration(
-    val container: Type.Object,
-    val constantStringsByFieldName: Map<String, String>
+  val container: Type.Object,
+  val constantStringsByFieldName: Map<String, String>
 )
