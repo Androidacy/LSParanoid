@@ -80,7 +80,7 @@ class StringRegistryImpl(
 
   override fun streamChunks(consumer: (String) -> Unit) {
     writer.flush()
-    val totalLength = tempFile.length().toInt() / 2 // UTF-16BE uses 2 bytes per char
+    val totalLength = length
     if (totalLength == 0) {
       return
     }
