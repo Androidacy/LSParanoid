@@ -41,7 +41,7 @@ class StringRegistryImpl(
     deleteOnExit()
   }
   private val writer = tempFile.writer(StandardCharsets.UTF_16BE)
-  private var length = 0
+  private val length = java.util.concurrent.atomic.AtomicInteger(0)
 
   private val seed = seed.toLong() and 0xffff_ffffL
 
