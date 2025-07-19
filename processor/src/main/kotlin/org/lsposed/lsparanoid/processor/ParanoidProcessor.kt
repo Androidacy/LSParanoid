@@ -32,7 +32,7 @@ import java.nio.file.Path
 import java.util.jar.JarOutputStream
 
 class ParanoidProcessor(
-    seed: Int,
+    private val seed: Int,
     classpath: Set<Path>,
     private val inputs: List<Path>,
     private val output: JarOutputStream,
@@ -44,41 +44,41 @@ class ParanoidProcessor(
     private val logger = getLogger()
 
     private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath + inputs)
-    private val stringRegistry = StringRegistryImpl(seed)
 
     fun process() {
         dumpConfiguration()
+        StringRegistryImpl(seed).use { stringRegistry ->
+            val analysisResult = Analyzer(grip, classFilter).analyze(inputs)
+            analysisResult.dump()
 
-        val analysisResult = Analyzer(grip, classFilter).analyze(inputs)
-        analysisResult.dump()
+            val deobfuscator = createDeobfuscator()
+            logger.info("Prepare to generate {}", deobfuscator)
 
-        val deobfuscator = createDeobfuscator()
-        logger.info("Prepare to generate {}", deobfuscator)
+            val sources = inputs.asSequence().map { input ->
+                IoFactory.createFileSource(input)
+            }
 
-        val sources = inputs.asSequence().map { input ->
-            IoFactory.createFileSource(input)
-        }
-
-        try {
-            Patcher(
-                deobfuscator,
-                stringRegistry,
-                analysisResult,
-                grip.classRegistry,
-                grip.fileRegistry,
-                asmApi
-            ).copyAndPatchClasses(sources, output)
-            val deobfuscatorBytes =
-                DeobfuscatorGenerator(
+            try {
+                Patcher(
                     deobfuscator,
                     stringRegistry,
+                    analysisResult,
                     grip.classRegistry,
-                    grip.fileRegistry
-                ).generateDeobfuscator()
-            output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
-        } finally {
-            sources.forEach { source ->
-                source.closeQuietly()
+                    grip.fileRegistry,
+                    asmApi
+                ).copyAndPatchClasses(sources, output)
+                val deobfuscatorBytes =
+                    DeobfuscatorGenerator(
+                        deobfuscator,
+                        stringRegistry,
+                        grip.classRegistry,
+                        grip.fileRegistry
+                    ).generateDeobfuscator()
+                output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
+            } finally {
+                sources.forEach { source ->
+                    source.closeQuietly()
+                }
             }
         }
     }

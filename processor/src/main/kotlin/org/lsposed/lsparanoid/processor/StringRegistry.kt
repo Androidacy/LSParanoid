@@ -19,8 +19,10 @@ package org.lsposed.lsparanoid.processor
 
 import org.lsposed.lsparanoid.DeobfuscatorHelper
 import org.lsposed.lsparanoid.RandomHelper
+import java.io.File
+import java.io.Closeable
 
-interface StringRegistry {
+interface StringRegistry : Closeable {
   fun registerString(string: String): Long
 
   @Deprecated("Use streamChunks for better memory efficiency", ReplaceWith("streamChunks(consumer)"))
@@ -35,7 +37,11 @@ class StringRegistryImpl(
 ) : StringRegistry {
 
   private val seed = seed.toLong() and 0xffff_ffffL
-  private val builder = StringBuilder()
+  private val tempFile = File.createTempFile("lsparanoid-", ".tmp").apply {
+    deleteOnExit()
+  }
+  private var length = 0L
+  private val writer = tempFile.writer()
 
   override fun registerString(string: String): Long {
     var mask = 0L
@@ -44,16 +50,17 @@ class StringRegistryImpl(
     mask = mask or (state and 0xffff_0000_0000L)
     state = RandomHelper.next(state)
     mask = mask or ((state and 0xffff_0000_0000L) shl 16)
-    val index = builder.length
-    val id = seed or ((index.toLong() shl 32) xor mask)
+    val index = length
+    val id = seed or ((index shl 32) xor mask)
 
     state = RandomHelper.next(state)
-    builder.append((((state ushr 32) and 0xffffL) xor string.length.toLong()).toInt().toChar())
+    writer.append((((state ushr 32) and 0xffffL) xor string.length.toLong()).toInt().toChar())
 
     for (char in string) {
       state = RandomHelper.next(state)
-      builder.append((((state ushr 32) and 0xffffL) xor char.code.toLong()).toInt().toChar())
+      writer.append((((state ushr 32) and 0xffffL) xor char.code.toLong()).toInt().toChar())
     }
+    length += string.length + 1
 
     return id
   }
@@ -67,25 +74,31 @@ class StringRegistryImpl(
   }
 
   override fun streamChunks(consumer: (String) -> Unit) {
-    val totalLength = builder.length
-    if (totalLength == 0) {
+    writer.flush()
+    val totalLength = tempFile.length()
+    if (totalLength == 0L) {
       return
     }
-    var currentIndex = 0
-    while (currentIndex < totalLength) {
-      val endIndex = kotlin.math.min(currentIndex + DeobfuscatorHelper.MAX_CHUNK_LENGTH, totalLength)
-      // Substring still creates a new string, but it's one chunk at a time
-      // instead of builder.toString() creating one giant string first.
-      consumer(builder.substring(currentIndex, endIndex))
-      currentIndex = endIndex
+    tempFile.reader().use { reader ->
+      val buffer = CharArray(DeobfuscatorHelper.MAX_CHUNK_LENGTH)
+      var read: Int
+      while (reader.read(buffer).also { read = it } != -1) {
+        consumer(String(buffer, 0, read))
+      }
     }
   }
 
   override fun getChunkCount(): Int {
-    val totalLength = builder.length
-    if (totalLength == 0) {
+    writer.flush()
+    val totalLength = tempFile.length()
+    if (totalLength == 0L) {
       return 0
     }
-    return (totalLength + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH
+    return ((totalLength + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH).toInt()
+  }
+
+  override fun close() {
+    writer.close()
+    tempFile.delete()
   }
 }
