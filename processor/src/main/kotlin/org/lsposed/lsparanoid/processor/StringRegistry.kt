@@ -44,6 +44,9 @@ class StringRegistryImpl(
   private val writer = tempFile.writer()
 
   override fun registerString(string: String): Long {
+    if (string.length > 0xFFFF) {
+      throw IllegalArgumentException("String length ${string.length} exceeds maximum of 65535 characters")
+    }
     var mask = 0L
     var state = RandomHelper.seed(seed)
     state = RandomHelper.next(state)

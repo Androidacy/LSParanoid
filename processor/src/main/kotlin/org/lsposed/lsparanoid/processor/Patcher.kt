@@ -92,7 +92,7 @@ class Patcher(
         logger.debug("Patching class {}", name)
         val reader = ClassReader(source.readFile(name))
         val writer = StandaloneClassWriter(
-            ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES,
+            ClassWriter.COMPUTE_MAXS,
             classRegistry,
             fileRegistry
         )

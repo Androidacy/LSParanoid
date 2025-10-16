@@ -37,7 +37,7 @@ class DeobfuscatorGenerator(
 ) {
 
   fun generateDeobfuscator(): ByteArray {
-    val writer = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES, classRegistry, fileRegistry)
+    val writer = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS, classRegistry, fileRegistry)
     writer.visit(
       Opcodes.V1_6,
       ACC_PUBLIC or ACC_SUPER,
@@ -81,17 +81,15 @@ class DeobfuscatorGenerator(
         getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
         var index = 0
         stringRegistry.streamChunks { chunk ->
-          dup() // Duplicate the array reference
-          push(index) // Push the index
-          push(chunk) // Push the chunk string
-          arrayStore(CHUNKS_ELEMENT_TYPE) // Store the chunk in the array
+          dup()
+          push(index)
+          push(chunk)
+          arrayStore(CHUNKS_ELEMENT_TYPE)
           index++
         }
-        // Pop the array reference that was loaded by getStatic (if chunkCount > 0)
-        // and duplicated in the loop. The original putStatic already stored it.
-        // If streamChunks did nothing (e.g. 0 chunks), this pop is not needed as getStatic wasn't called.
-        // However, the structure with index ensures it's balanced if chunks were processed.
-        // If chunkCount > 0, one array reference remains on stack after loop.
+        if (index != chunkCount) {
+          throw IllegalStateException("Chunk count mismatch: expected $chunkCount but got $index")
+        }
         pop()
       }
       // Ensure stack is balanced: if chunkCount was 0, no putStatic/getStatic/pop happened here.

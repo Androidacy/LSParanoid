@@ -65,6 +65,7 @@ public class RandomHelper {
   }
 
   private static short rotl(final short x, final int k) {
-    return (short) ((x << k) | (x >>> (32 - k)));
+    final int val = x & 0xFFFF;
+    return (short) ((val << k) | (val >>> (16 - k)));
   }
 }

@@ -58,7 +58,9 @@ public class DeobfuscatorHelper {
 
   private static long getCharAt(final int charIndex, final String[] chunks, final long state) {
     final long nextState = RandomHelper.next(state);
-    final String chunk = chunks[charIndex / MAX_CHUNK_LENGTH];
-    return nextState ^ ((long) chunk.charAt(charIndex % MAX_CHUNK_LENGTH) << 32);
+    final int chunkIndex = charIndex / MAX_CHUNK_LENGTH;
+    final String chunk = chunks[chunkIndex];
+    final int indexInChunk = charIndex - (chunkIndex * MAX_CHUNK_LENGTH);
+    return nextState ^ ((long) chunk.charAt(indexInChunk) << 32);
   }
 }
