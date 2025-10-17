@@ -78,8 +78,7 @@ class StringRegistryImpl(
 
   override fun streamChunks(consumer: (String) -> Unit) {
     writer.flush()
-    val totalLength = tempFile.length()
-    if (totalLength == 0L) {
+    if (length == 0L) {
       return
     }
     tempFile.reader().use { reader ->
@@ -93,11 +92,10 @@ class StringRegistryImpl(
 
   override fun getChunkCount(): Int {
     writer.flush()
-    val totalLength = tempFile.length()
-    if (totalLength == 0L) {
+    if (length == 0L) {
       return 0
     }
-    return ((totalLength + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH).toInt()
+    return ((length + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH).toInt()
   }
 
   override fun close() {

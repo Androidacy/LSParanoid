@@ -1,6 +1,6 @@
 plugins {
-    id("org.lsposed.lsparanoid")
     id("com.android.library")
+    id("com.github.Androidacy.LSParanoid")
 }
 
 lsparanoid {
@@ -9,11 +9,10 @@ lsparanoid {
 
 android {
     namespace = "org.lsposed.paranoid.samples.library_obfuscate"
-    compileSdk = 33
-    buildToolsVersion = "33.0.2"
+    compileSdk = 35
+    buildToolsVersion = "35.0.0"
     defaultConfig {
         minSdk = 24
-        targetSdk = 33
     }
 
     compileOptions {

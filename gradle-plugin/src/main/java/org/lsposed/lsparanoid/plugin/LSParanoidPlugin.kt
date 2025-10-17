@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-@file:Suppress("DEPRECATION")
-
 package org.lsposed.lsparanoid.plugin
 
 import com.android.build.api.artifact.ScopedArtifact
@@ -27,7 +25,6 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.compile.JavaCompile
-import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.security.SecureRandom
 
@@ -89,8 +86,10 @@ class LSParanoidPlugin : Plugin<Project> {
             it.options.compilerArgs.add("-XDstringConcat=inline")
         }
 
-        project.tasks.withType(KotlinCompile::class.java) {
-            it.kotlinOptions.freeCompilerArgs += "-Xstring-concat=inline"
+        project.tasks.withType(KotlinCompilationTask::class.java) {
+            it.compilerOptions {
+                freeCompilerArgs.add("-Xstring-concat=inline")
+            }
         }
     }
 
