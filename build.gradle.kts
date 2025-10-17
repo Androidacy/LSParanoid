@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "com.github.Androidacy.LSParanoid"
-    version = "0.9.1"
+    version = "0.9.2"
 
     plugins.withType(JavaPlugin::class.java) {
         extensions.configure(JavaPluginExtension::class.java) {

@@ -42,14 +42,14 @@ Then in your module's `build.gradle.kts`:
 ```kotlin
 plugins {
   id("com.android.application") // or "com.android.library"
-  id("com.github.Androidacy.LSParanoid") version "0.9.1"
+  id("com.github.Androidacy.LSParanoid") version "0.9.2"
 }
 ```
 
 You also need to add the runtime dependency to your module:
 ```kotlin
 dependencies {
-  implementation("com.github.Androidacy.LSParanoid:core:0.9.1")
+  implementation("com.github.Androidacy.LSParanoid:core:0.9.2")
 }
 ```
 
@@ -66,7 +66,7 @@ Paranoid plugin can be configured using `lsparanoid` extension object.
 The following is an example `build.gradle.kts` that configures `lsparanoid` extension object with default values.
 ```kotlin
 plugins {
-    id("com.github.Androidacy.LSParanoid") version "0.9.1"
+    id("com.github.Androidacy.LSParanoid") version "0.9.2"
     // other plugins...
 }
 
