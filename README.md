@@ -15,20 +15,46 @@ Usage
 In order to make LSParanoid work with your project you have to apply the LSParanoid Gradle plugin
 to the project.
 
-The following is an example `settings.gradle.kts` to apply LSParanoid.
+### Using with JitPack
+
+Since JitPack doesn't serve Gradle plugin marker artifacts, you need to use `resolutionStrategy` to map the plugin ID to the actual module.
+
+Add the following to your `settings.gradle.kts`:
 ```kotlin
 pluginManagement {
   repositories {
+    gradlePluginPortal()
+    google()
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
   }
-  plugins {
-    id("com.github.Androidacy:LSParanoid") version "......"
+  resolutionStrategy {
+    eachPlugin {
+      if (requested.id.id == "com.github.Androidacy.LSParanoid") {
+        useModule("com.github.Androidacy:LSParanoid:gradle-plugin:${requested.version}")
+      }
+    }
   }
 }
 ```
 
+Then in your module's `build.gradle.kts`:
+```kotlin
+plugins {
+  id("com.android.application") // or "com.android.library"
+  id("com.github.Androidacy.LSParanoid") version "0.9.1"
+}
+```
+
+You also need to add the runtime dependency to your module:
+```kotlin
+dependencies {
+  implementation("com.github.Androidacy.LSParanoid:core:0.9.1")
+}
+```
+
 Now you can just annotate classes with strings that need to be obfuscated with `@Obfuscate`.
-After you project compiles every string in annotated classes will be obfuscated.
+After your project compiles every string in annotated classes will be obfuscated.
 
 **Note that you should use at least Java 17 to launch the gradle daemon for this plugin (this is also required by AGP 8+).**
 The project that uses this plugin on the other hand does not necessarily to target Java 17.
@@ -40,7 +66,7 @@ Paranoid plugin can be configured using `lsparanoid` extension object.
 The following is an example `build.gradle.kts` that configures `lsparanoid` extension object with default values.
 ```kotlin
 plugins {
-    id("org.lsposed.lsparanoid")
+    id("com.github.Androidacy.LSParanoid") version "0.9.1"
     // other plugins...
 }
 
