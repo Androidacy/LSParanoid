@@ -9,6 +9,14 @@ plugins {
     signing
 }
 
+gradlePlugin {
+    plugins {
+        create("lsparanoid") {
+            id = "com.github.Androidacy.LSParanoid"
+            implementationClass = "org.lsposed.lsparanoid.plugin.LSParanoidPlugin"
+        }
+    }
+}
 
 dependencies {
     implementation(projects.core)
@@ -67,7 +75,7 @@ idea {
 
 publish {
     githubRepo = "Androidacy/LSParanoid"
-    publishPlugin("$group", rootProject.name, "org.lsposed.lsparanoid.plugin.LSParanoidPlugin") {
+    publications("gradle-plugin") {
         name = rootProject.name
         description = "String obfuscator for Android applications"
         url = "https://github.com/Androidacy/LSParanoid"
