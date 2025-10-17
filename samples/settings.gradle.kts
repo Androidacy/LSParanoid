@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("..")
     repositories {
         google()
         mavenCentral()
@@ -15,5 +16,8 @@ dependencyResolutionManagement {
         mavenLocal()
     }
 }
+
+includeBuild("..")
+
 rootProject.name = "samples"
 include(":application", ":application-global-obfuscate", ":library-obfuscate", ":library", ":library-may-obfuscate")
