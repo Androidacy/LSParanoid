@@ -3,14 +3,13 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 
 
 plugins {
-    alias(libs.plugins.lsplugin.publish)
     alias(libs.plugins.kotlin) apply false
 }
 
 
 allprojects {
     group = "com.github.Androidacy.LSParanoid"
-    version = "0.9.2"
+    version = "0.9.3"
 
     plugins.withType(JavaPlugin::class.java) {
         extensions.configure(JavaPluginExtension::class.java) {

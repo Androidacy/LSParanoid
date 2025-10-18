@@ -15,10 +15,6 @@ Usage
 In order to make LSParanoid work with your project you have to apply the LSParanoid Gradle plugin
 to the project.
 
-### Using with JitPack
-
-Since JitPack doesn't serve Gradle plugin marker artifacts, you need to use `resolutionStrategy` to map the plugin ID to the actual module.
-
 Add the following to your `settings.gradle.kts`:
 ```kotlin
 pluginManagement {
@@ -28,13 +24,6 @@ pluginManagement {
     mavenCentral()
     maven { url = uri("https://jitpack.io") }
   }
-  resolutionStrategy {
-    eachPlugin {
-      if (requested.id.id == "com.github.Androidacy.LSParanoid") {
-        useModule("com.github.Androidacy:LSParanoid:gradle-plugin:${requested.version}")
-      }
-    }
-  }
 }
 ```
 
@@ -42,14 +31,11 @@ Then in your module's `build.gradle.kts`:
 ```kotlin
 plugins {
   id("com.android.application") // or "com.android.library"
-  id("com.github.Androidacy.LSParanoid") version "0.9.2"
+  id("com.github.Androidacy.LSParanoid") version "0.9.3"
 }
-```
 
-You also need to add the runtime dependency to your module:
-```kotlin
 dependencies {
-  implementation("com.github.Androidacy.LSParanoid:core:0.9.2")
+  implementation("com.github.Androidacy.LSParanoid:core:0.9.3")
 }
 ```
 
@@ -66,7 +52,7 @@ Paranoid plugin can be configured using `lsparanoid` extension object.
 The following is an example `build.gradle.kts` that configures `lsparanoid` extension object with default values.
 ```kotlin
 plugins {
-    id("com.github.Androidacy.LSParanoid") version "0.9.2"
+    id("com.github.Androidacy.LSParanoid") version "0.9.3"
     // other plugins...
 }
 

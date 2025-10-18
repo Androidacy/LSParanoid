@@ -9,11 +9,16 @@ plugins {
     signing
 }
 
+group = "com.github.Androidacy.LSParanoid"
+version = rootProject.version
+
 gradlePlugin {
     plugins {
         create("lsparanoid") {
             id = "com.github.Androidacy.LSParanoid"
             implementationClass = "org.lsposed.lsparanoid.plugin.LSParanoidPlugin"
+            displayName = "LSParanoid"
+            description = "String obfuscator for Android applications"
         }
     }
 }
@@ -73,27 +78,33 @@ idea {
     }
 }
 
-publish {
-    githubRepo = "Androidacy/LSParanoid"
-    publications("gradle-plugin") {
-        name = rootProject.name
-        description = "String obfuscator for Android applications"
-        url = "https://github.com/Androidacy/LSParanoid"
-        licenses {
-            license {
-                name = "Apache License 2.0"
-                url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
+publishing {
+    publications {
+        withType<MavenPublication> {
+            pom {
+                name = "LSParanoid"
+                description = "String obfuscator for Android applications"
+                url = "https://github.com/Androidacy/LSParanoid"
+                licenses {
+                    license {
+                        name = "Apache License 2.0"
+                        url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
+                    }
+                }
+                developers {
+                    developer {
+                        name = "LSPosed"
+                        url = "https://lsposed.org"
+                    }
+                }
+                scm {
+                    connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
+                    url = "https://github.com/Androidacy/LSParanoid"
+                }
             }
         }
-        developers {
-            developer {
-                name = "LSPosed"
-                url = "https://lsposed.org"
-            }
-        }
-        scm {
-            connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
-            url = "https://github.com/Androidacy/LSParanoid"
-        }
+    }
+    repositories {
+        mavenLocal()
     }
 }

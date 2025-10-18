@@ -17,5 +17,5 @@ android {
 }
 
 dependencies {
-    implementation("com.github.Androidacy.LSParanoid:core:0.9.2")
+    implementation("com.github.Androidacy.LSParanoid:core:0.9.3")
 }
