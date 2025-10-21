@@ -42,7 +42,7 @@ class Analyzer(private val grip: Grip, private val classFilter: ((className: Str
   private fun findTypesToObfuscate(inputs: List<Path>): Set<Type.Object> {
     val registry = newObfuscatedTypeRegistry(grip.classRegistry).withCache()
     val query = grip select classes from inputs where registry.shouldObfuscate(classFilter)
-    return query.execute().types.toHashSet()
+    return query.execute().types.toSortedSet(compareBy { it.internalName })
   }
 
   private fun createObfuscationConfiguration(type: Type.Object): ClassConfiguration {
