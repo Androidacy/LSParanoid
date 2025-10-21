@@ -116,7 +116,7 @@ class Patcher(
                         it
                     )
                 }
-        reader.accept(patcher, 0)
+        reader.accept(patcher, ClassReader.EXPAND_FRAMES)
         jar.createFile(name, writer.toByteArray())
         return true
     }
