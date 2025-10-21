@@ -31,6 +31,7 @@ class StandaloneClassWriter : ClassWriter {
     private val logger = getLogger()
     private val classRegistry: ClassRegistry
     private val fileRegistry: FileRegistry
+    private val superClassCache = HashMap<Pair<String, String>, String>()
 
     constructor(
         flags: Int,
@@ -52,6 +53,17 @@ class StandaloneClassWriter : ClassWriter {
     }
 
     override fun getCommonSuperClass(type1: String, type2: String): String {
+        val key = Pair(type1, type2)
+        superClassCache[key]?.let { return it }
+        val reverseKey = Pair(type2, type1)
+        superClassCache[reverseKey]?.let { return it }
+
+        val result = computeCommonSuperClass(type1, type2)
+        superClassCache[key] = result
+        return result
+    }
+
+    private fun computeCommonSuperClass(type1: String, type2: String): String {
         val hierarchy = HashSet<Type>()
         for (mirror in classRegistry.findClassHierarchy(getObjectTypeByInternalName(type1))) {
             hierarchy.add(mirror.type)

@@ -93,7 +93,7 @@ class Patcher(
         val reader = ClassReader(source.readFile(name))
         val writer = StandaloneClassWriter(
             reader,
-            ClassWriter.COMPUTE_MAXS,
+            ClassWriter.COMPUTE_FRAMES,
             classRegistry,
             fileRegistry
         )
@@ -116,7 +116,7 @@ class Patcher(
                         it
                     )
                 }
-        reader.accept(patcher, ClassReader.EXPAND_FRAMES)
+        reader.accept(patcher, ClassReader.SKIP_FRAMES)
         jar.createFile(name, writer.toByteArray())
         return true
     }
