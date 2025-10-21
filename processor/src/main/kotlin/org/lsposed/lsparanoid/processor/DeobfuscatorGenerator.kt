@@ -37,7 +37,7 @@ class DeobfuscatorGenerator(
 ) {
 
   fun generateDeobfuscator(): ByteArray {
-    val writer = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS, classRegistry, fileRegistry)
+    val writer = StandaloneClassWriter(ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES, classRegistry, fileRegistry)
     writer.visit(
       Opcodes.V1_6,
       ACC_PUBLIC or ACC_SUPER,
