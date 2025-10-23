@@ -12,7 +12,7 @@ dependencies {
 
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
-    if (project.hasProperty("signingKey")) {
+    if (project.hasProperty("signingInMemoryKey")) {
         signAllPublications()
     }
 
