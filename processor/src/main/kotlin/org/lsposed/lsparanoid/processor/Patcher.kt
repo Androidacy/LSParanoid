@@ -53,7 +53,12 @@ class Patcher(
         logger.info("Patching...")
         logger.info("   Input: {}", source)
 
+        val entries = mutableListOf<Pair<String, FileSource.EntryType>>()
         source.listFiles { name, type ->
+            entries.add(Pair(name, type))
+        }
+
+        entries.sortedBy { it.first }.forEach { (name, type) ->
             when (type) {
                 FileSource.EntryType.CLASS -> copyAndPatchClass(source, jar, name)
                 FileSource.EntryType.FILE -> jar.createFile(name, source.readFile(name))

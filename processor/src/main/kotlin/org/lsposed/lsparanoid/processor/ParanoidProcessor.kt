@@ -43,18 +43,19 @@ class ParanoidProcessor(
 
     private val logger = getLogger()
 
-    private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath + inputs)
+    private val sortedInputs = inputs.distinct().sorted()
+    private val grip: Grip = GripFactory.newInstance(asmApi).create(classpath + sortedInputs)
 
     fun process() {
         dumpConfiguration()
         StringRegistryImpl(seed).use { stringRegistry ->
-            val analysisResult = Analyzer(grip, classFilter).analyze(inputs)
+            val analysisResult = Analyzer(grip, classFilter).analyze(sortedInputs)
             analysisResult.dump()
 
             val deobfuscator = createDeobfuscator()
             logger.info("Prepare to generate {}", deobfuscator)
 
-            val sources = inputs.asSequence().map { input ->
+            val sources = sortedInputs.asSequence().map { input ->
                 IoFactory.createFileSource(input)
             }
 
