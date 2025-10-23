@@ -21,6 +21,10 @@ import org.lsposed.lsparanoid.DeobfuscatorHelper
 import org.lsposed.lsparanoid.RandomHelper
 import java.io.File
 import java.io.Closeable
+import java.io.DataOutputStream
+import java.io.FileOutputStream
+import java.io.DataInputStream
+import java.io.FileInputStream
 
 interface StringRegistry : Closeable {
   fun registerString(string: String): Long
@@ -41,7 +45,7 @@ class StringRegistryImpl(
     deleteOnExit()
   }
   private var length = 0L
-  private val writer = tempFile.writer()
+  private val writer = DataOutputStream(FileOutputStream(tempFile))
 
   override fun registerString(string: String): Long {
     if (string.length > 0xFFFF) {
@@ -57,11 +61,11 @@ class StringRegistryImpl(
     val id = seed or ((index shl 32) xor mask)
 
     state = RandomHelper.next(state)
-    writer.append((((state ushr 32) and 0xffffL) xor string.length.toLong()).toInt().toChar())
+    writer.writeChar((((state ushr 32) and 0xffffL) xor string.length.toLong()).toInt())
 
     for (char in string) {
       state = RandomHelper.next(state)
-      writer.append((((state ushr 32) and 0xffffL) xor char.code.toLong()).toInt().toChar())
+      writer.writeChar((((state ushr 32) and 0xffffL) xor char.code.toLong()).toInt())
     }
     length += string.length + 1
 
@@ -81,11 +85,16 @@ class StringRegistryImpl(
     if (length == 0L) {
       return
     }
-    tempFile.reader().use { reader ->
+    DataInputStream(FileInputStream(tempFile)).use { reader ->
       val buffer = CharArray(DeobfuscatorHelper.MAX_CHUNK_LENGTH)
-      var read: Int
-      while (reader.read(buffer).also { read = it } != -1) {
-        consumer(String(buffer, 0, read))
+      var charsRead = 0
+      while (charsRead < length) {
+        val toRead = minOf(DeobfuscatorHelper.MAX_CHUNK_LENGTH.toLong(), length - charsRead).toInt()
+        for (i in 0 until toRead) {
+          buffer[i] = reader.readChar()
+        }
+        consumer(String(buffer, 0, toRead))
+        charsRead += toRead
       }
     }
   }
