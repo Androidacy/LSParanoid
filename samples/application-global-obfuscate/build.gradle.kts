@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application")
-    id("com.github.Androidacy.LSParanoid")
+    id("com.androidacy.lsparanoid")
 }
 
 lsparanoid {

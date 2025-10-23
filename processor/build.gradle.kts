@@ -1,12 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin)
-    `maven-publish`
-    signing
-}
-
-java {
-    withSourcesJar()
-    withJavadocJar()
+    id("com.vanniktech.maven.publish")
 }
 
 dependencies {
@@ -16,34 +10,36 @@ dependencies {
     implementation(libs.asm.common)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            pom {
-                name = project.name
-                description = "String obfuscator for Android applications"
-                url = "https://github.com/Androidacy/LSParanoid"
-                licenses {
-                    license {
-                        name = "Apache License 2.0"
-                        url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
-                    }
-                }
-                developers {
-                    developer {
-                        name = "LSPosed"
-                        url = "https://lsposed.org"
-                    }
-                }
-                scm {
-                    connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
-                    url = "https://github.com/Androidacy/LSParanoid"
-                }
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = true)
+    if (project.hasProperty("signingKey")) {
+        signAllPublications()
+    }
+
+    coordinates("com.androidacy.lsparanoid", project.name, version.toString())
+
+    pom {
+        name = "LSParanoid - ${project.name}"
+        description = "String obfuscator for Android applications"
+        url = "https://github.com/Androidacy/LSParanoid"
+
+        licenses {
+            license {
+                name = "Apache License 2.0"
+                url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
             }
         }
-    }
-    repositories {
-        mavenLocal()
+
+        developers {
+            developer {
+                name = "Androidacy"
+                url = "https://github.com/Androidacy"
+            }
+        }
+
+        scm {
+            connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
+            url = "https://github.com/Androidacy/LSParanoid"
+        }
     }
 }

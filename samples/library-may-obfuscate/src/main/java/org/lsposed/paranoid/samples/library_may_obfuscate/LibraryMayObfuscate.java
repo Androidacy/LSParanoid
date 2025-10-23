@@ -2,7 +2,7 @@ package org.lsposed.paranoid.samples.library_may_obfuscate;
 
 import android.util.Log;
 
-import org.lsposed.lsparanoid.Obfuscate;
+import com.androidacy.lsparanoid.Obfuscate;
 
 @Obfuscate
 public class LibraryMayObfuscate {

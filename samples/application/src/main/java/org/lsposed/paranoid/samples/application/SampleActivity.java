@@ -6,7 +6,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import org.lsposed.lsparanoid.Obfuscate;
+import com.androidacy.lsparanoid.Obfuscate;
 
 @Obfuscate
 public class SampleActivity extends Activity {

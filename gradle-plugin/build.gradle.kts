@@ -5,18 +5,17 @@ plugins {
     idea
     alias(libs.plugins.kotlin)
     `java-gradle-plugin`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish")
 }
 
-group = "com.github.Androidacy.LSParanoid"
+group = "com.androidacy.lsparanoid"
 version = rootProject.version
 
 gradlePlugin {
     plugins {
         create("lsparanoid") {
-            id = "com.github.Androidacy.LSParanoid"
-            implementationClass = "org.lsposed.lsparanoid.plugin.LSParanoidPlugin"
+            id = "com.androidacy.lsparanoid"
+            implementationClass = "com.androidacy.lsparanoid.plugin.LSParanoidPlugin"
             displayName = "LSParanoid"
             description = "String obfuscator for Android applications"
         }
@@ -38,11 +37,11 @@ val genTask = tasks.register("generateBuildClass") {
     outputs.dir(generatedDir)
     doLast {
         val buildClassFile =
-            File(generatedJavaSourcesDir, "org/Androidacy/LSParanoid/plugin/Build.java")
+            File(generatedJavaSourcesDir, "com/androidacy/lsparanoid/plugin/Build.java")
         buildClassFile.parentFile.mkdirs()
         buildClassFile.writeText(
             """
-            package org.lsposed.lsparanoid.plugin;
+            package com.androidacy.lsparanoid.plugin;
             /**
              * The type Build.
              */
@@ -78,33 +77,36 @@ idea {
     }
 }
 
-publishing {
-    publications {
-        withType<MavenPublication> {
-            pom {
-                name = "LSParanoid"
-                description = "String obfuscator for Android applications"
-                url = "https://github.com/Androidacy/LSParanoid"
-                licenses {
-                    license {
-                        name = "Apache License 2.0"
-                        url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
-                    }
-                }
-                developers {
-                    developer {
-                        name = "LSPosed"
-                        url = "https://lsposed.org"
-                    }
-                }
-                scm {
-                    connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
-                    url = "https://github.com/Androidacy/LSParanoid"
-                }
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = true)
+    if (project.hasProperty("signingKey")) {
+        signAllPublications()
+    }
+
+    coordinates("com.androidacy.lsparanoid", project.name, version.toString())
+
+    pom {
+        name = "LSParanoid - ${project.name}"
+        description = "String obfuscator for Android applications"
+        url = "https://github.com/Androidacy/LSParanoid"
+
+        licenses {
+            license {
+                name = "Apache License 2.0"
+                url = "https://github.com/Androidacy/LSParanoid/blob/master/LICENSE.txt"
             }
         }
-    }
-    repositories {
-        mavenLocal()
+
+        developers {
+            developer {
+                name = "Androidacy"
+                url = "https://github.com/Androidacy"
+            }
+        }
+
+        scm {
+            connection = "scm:git:https://github.com/Androidacy/LSParanoid.git"
+            url = "https://github.com/Androidacy/LSParanoid"
+        }
     }
 }

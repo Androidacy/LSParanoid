@@ -4,12 +4,13 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 
 plugins {
     alias(libs.plugins.kotlin) apply false
+    id("com.vanniktech.maven.publish") version "0.34.0" apply false
 }
 
 
 allprojects {
-    group = "com.github.Androidacy.LSParanoid"
-    version = "0.9.10"
+    group = "com.androidacy.lsparanoid"
+    version = "0.9.11"
 
     plugins.withType(JavaPlugin::class.java) {
         extensions.configure(JavaPluginExtension::class.java) {
