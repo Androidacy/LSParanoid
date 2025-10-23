@@ -6,7 +6,7 @@ LSParanoid
 
 String obfuscator for Android applications. LSParanoid supports [configuration cache](https://docs.gradle.org/current/userguide/configuration_cache.html).
 
-This library has been modified from the original for Androidacy's internal usage. We do not warrant that this library will work in any other circumstances or scenarios, nor is it part of our supported product portfolio.
+This library has been modified from the original for Androidacy's internal usage. We do not warrant that this library will work in any other circumstances or scenarios, nor is it part of our supported product portfolio. As such, it may at times be unstable or unusable.
 
 **This library is not intended as a security tool. Security by obscurity is _never_ a good idea.**
 
