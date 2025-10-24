@@ -130,7 +130,7 @@ class ParanoidProcessor(
     }
 
     private fun composeResourceName(): String {
-        val hash = (projectName.hashCode().toLong() and 0xffffffffL xor seed.toLong()).toString(16)
-        return "assets/$hash.bin"
+        val hash = ((projectName.hashCode().toLong() and 0xffffffffL) xor (seed.toLong() and 0xffffffffL)).toString(16)
+        return "$hash.bin"
     }
 }
