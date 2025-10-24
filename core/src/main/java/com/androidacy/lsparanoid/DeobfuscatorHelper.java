@@ -132,8 +132,21 @@ public class DeobfuscatorHelper {
   private static long getCharAt(final int charIndex, final String[] chunks, final long state) {
     final long nextState = RandomHelper.next(state);
     final int chunkIndex = charIndex / MAX_CHUNK_LENGTH;
+
+    if (chunkIndex < 0 || chunkIndex >= chunks.length) {
+      throw new IllegalArgumentException("Chunk index out of bounds: " + chunkIndex);
+    }
+
     final String chunk = chunks[chunkIndex];
+    if (chunk == null) {
+      throw new IllegalStateException("Chunk is null at index: " + chunkIndex);
+    }
+
     final int indexInChunk = charIndex - (chunkIndex * MAX_CHUNK_LENGTH);
+    if (indexInChunk < 0 || indexInChunk >= chunk.length()) {
+      throw new IllegalArgumentException("Index in chunk out of bounds: " + indexInChunk + ", chunk length: " + chunk.length());
+    }
+
     return nextState ^ ((long) chunk.charAt(indexInChunk) << 32);
   }
 }

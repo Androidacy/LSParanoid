@@ -62,13 +62,9 @@ abstract class LSParanoidTask : DefaultTask() {
     @TaskAction
     fun taskAction() {
         val inputs = jars.get() + dirs.get()
-        JarOutputStream(
-            BufferedOutputStream(
-                FileOutputStream(
-                    output.get().asFile
-                )
-            )
-        ).use { jarOutput ->
+        FileOutputStream(output.get().asFile).use { fileOut ->
+            BufferedOutputStream(fileOut).use { bufferedOut ->
+                JarOutputStream(bufferedOut).use { jarOutput ->
             ParanoidProcessor(
                 seed = seed.get(),
                 inputs = inputs.map { it.asFile.toPath() },
@@ -78,6 +74,8 @@ abstract class LSParanoidTask : DefaultTask() {
                 projectName = projectName.get(),
                 classFilter = classFilter
             ).process()
+                }
+            }
         }
     }
 }

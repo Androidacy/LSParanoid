@@ -302,6 +302,13 @@ class DeobfuscatorGenerator(
     newMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, deobfuscator.deobfuscationMethod) {
       val chunkCount = stringRegistry.getChunkCount()
 
+      // Handle empty string registry
+      if (chunkCount == 0) {
+        push("")
+        returnValue()
+        return@newMethod
+      }
+
       // Ensure chunks loaded
       push(chunkCount - 1)
       invokeStatic(deobfuscator.type.toAsmType(), METHOD_ENSURE_CHUNKS_LOADED)
@@ -315,10 +322,43 @@ class DeobfuscatorGenerator(
       for (i in 0 until chunkCount) {
         loadLocal(chunksLocal)
         push(i)
+
+        // Get WeakReference from chunks[i]
         getStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
         push(i)
         arrayLoad(WEAK_REF_TYPE)
+
+        // Check if WeakReference object itself is null
+        dup()
+        val weakRefNotNull = newLabel()
+        ifNonNull(weakRefNotNull)
+
+        // WeakReference is null, reload chunk
+        pop()
+        push(i)
+        invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
+        val afterLoad = newLabel()
+        goTo(afterLoad)
+
+        mark(weakRefNotNull)
+        // WeakReference exists, call get()
         invokeVirtual(WEAK_REF_TYPE, Method("get", "()Ljava/lang/Object;"))
+
+        // Check if referent is null (GC'd)
+        dup()
+        val referentNotNull = newLabel()
+        ifNonNull(referentNotNull)
+
+        // Referent was GC'd, reload chunk
+        pop()
+        push(i)
+        invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
+        goTo(afterLoad)
+
+        mark(referentNotNull)
+        // Have valid referent from WeakRef
+        mark(afterLoad)
+        // Stack: chunksLocal, i, String
         checkCast(Type.getType(String::class.java))
         arrayStore(Type.getType(String::class.java))
       }
