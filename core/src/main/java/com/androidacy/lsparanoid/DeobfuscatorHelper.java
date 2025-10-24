@@ -17,6 +17,7 @@
 
 package com.androidacy.lsparanoid;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,6 +46,39 @@ public class DeobfuscatorHelper {
   public static String[] loadChunksFromResource(final Class<?> clazz, final String resourceName, final long totalLength) {
     try (final InputStream is = clazz.getResourceAsStream(resourceName);
          final DataInputStream dis = new DataInputStream(is)) {
+      final int chunkCount = (int) ((totalLength + MAX_CHUNK_LENGTH - 1) / MAX_CHUNK_LENGTH);
+      final String[] chunks = new String[chunkCount];
+
+      long charsRead = 0;
+      int chunkIndex = 0;
+
+      while (charsRead < totalLength) {
+        final int chunkSize = (int) Math.min(MAX_CHUNK_LENGTH, totalLength - charsRead);
+        final char[] buffer = new char[chunkSize];
+
+        for (int i = 0; i < chunkSize; i++) {
+          buffer[i] = dis.readChar();
+        }
+
+        chunks[chunkIndex++] = new String(buffer);
+        charsRead += chunkSize;
+      }
+
+      return chunks;
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to load obfuscated strings", e);
+    }
+  }
+
+  /**
+   * Load chunks from byte array.
+   *
+   * @param data the byte array containing encoded characters
+   * @param totalLength the total length in characters
+   * @return the chunks array
+   */
+  public static String[] loadChunksFromByteArray(final byte[] data, final long totalLength) {
+    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data))) {
       final int chunkCount = (int) ((totalLength + MAX_CHUNK_LENGTH - 1) / MAX_CHUNK_LENGTH);
       final String[] chunks = new String[chunkCount];
 

@@ -36,6 +36,7 @@ interface StringRegistry : Closeable {
   fun getChunkCount(): Int
   fun getTotalLength(): Long
   fun copyDataTo(output: java.io.OutputStream)
+  fun getDataAsByteArray(): ByteArray
 }
 
 class StringRegistryImpl(
@@ -119,6 +120,11 @@ class StringRegistryImpl(
     tempFile.inputStream().use { input ->
       input.copyTo(output)
     }
+  }
+
+  override fun getDataAsByteArray(): ByteArray {
+    writer.flush()
+    return tempFile.readBytes()
   }
 
   override fun close() {

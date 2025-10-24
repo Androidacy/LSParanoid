@@ -68,19 +68,18 @@ class ParanoidProcessor(
                     grip.fileRegistry,
                     asmApi
                 ).copyAndPatchClasses(sources, output)
-                val resourceName = composeResourceName()
-                val deobfuscatorBytes =
+                val deobfuscatorClasses =
                     DeobfuscatorGenerator(
                         deobfuscator,
                         stringRegistry,
                         grip.classRegistry,
-                        grip.fileRegistry,
-                        resourceName
-                    ).generateDeobfuscator()
-                output.createFile("${deobfuscator.type.internalName}.class", deobfuscatorBytes)
-                output.putNextEntry(java.util.jar.JarEntry(resourceName))
-                stringRegistry.copyDataTo(output)
-                output.closeEntry()
+                        grip.fileRegistry
+                    ).generateDeobfuscatorClasses()
+
+                // Write all generated classes (main + chunk classes)
+                deobfuscatorClasses.forEach { (className, classBytes) ->
+                    output.createFile(className, classBytes)
+                }
             } finally {
                 sources.forEach { source ->
                     source.closeQuietly()
@@ -127,10 +126,5 @@ class ParanoidProcessor(
         } else {
             "$$normalizedProjectName"
         }
-    }
-
-    private fun composeResourceName(): String {
-        val hash = ((projectName.hashCode().toLong() and 0xffffffffL) xor (seed.toLong() and 0xffffffffL)).toString(16)
-        return "$hash.bin"
     }
 }

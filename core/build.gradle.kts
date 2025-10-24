@@ -3,6 +3,16 @@ plugins {
     id("com.vanniktech.maven.publish")
 }
 
+tasks.register<Copy>("copyConsumerRules") {
+    from("consumer-rules.pro")
+    into("build/resources/main/META-INF/proguard")
+    rename { "lsparanoid-core.pro" }
+}
+
+tasks.named("processResources") {
+    dependsOn("copyConsumerRules")
+}
+
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     if (project.hasProperty("signingInMemoryKey")) {
