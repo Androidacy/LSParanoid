@@ -49,8 +49,12 @@ class StringRegistryImpl(
   }
   private var length = 0L
   private val writer = DataOutputStream(FileOutputStream(tempFile))
+  private val stringToIdMap = mutableMapOf<String, Long>()
 
   override fun registerString(string: String): Long {
+    // Return existing ID if string was already registered (deduplication)
+    stringToIdMap[string]?.let { return it }
+
     if (string.length > 0xFFFF) {
       throw IllegalArgumentException("String length ${string.length} exceeds maximum of 65535 characters")
     }
@@ -71,6 +75,9 @@ class StringRegistryImpl(
       writer.writeChar((((state ushr 32) and 0xffffL) xor char.code.toLong()).toInt())
     }
     length += string.length + 1
+
+    // Cache the ID for deduplication
+    stringToIdMap[string] = id
 
     return id
   }
