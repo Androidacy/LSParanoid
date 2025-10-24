@@ -32,7 +32,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build and publish to Maven Local
-      run: ./gradlew build test publishToMavenLocalb --parallel --configuration-cache
+      run: ./gradlew build test publishToMavenLocal --parallel --configuration-cache
 
     - name: Build samples
       run: |
