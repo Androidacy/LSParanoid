@@ -3,6 +3,16 @@ plugins {
     id("com.vanniktech.maven.publish")
 }
 
+dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(projects.processor)
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
 tasks.register<Copy>("copyConsumerRules") {
     from("consumer-rules.pro")
     into("build/resources/main/META-INF/proguard")
