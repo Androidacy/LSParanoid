@@ -105,18 +105,11 @@ class DeobfuscatorGenerator(
       null
     ).visitEnd()
 
-    // Generate static initializer with chunk data
+    // Generate static initializer with Base64-encoded chunk data
+    val base64Data = java.util.Base64.getEncoder().encodeToString(chunkData)
     writer.newMethod(Opcodes.ACC_STATIC, Method("<clinit>", "()V")) {
-      push(chunkData.size)
-      newArray(Type.BYTE_TYPE)
-
-      for (i in chunkData.indices) {
-        dup()
-        push(i)
-        push(chunkData[i].toInt())
-        arrayStore(Type.BYTE_TYPE)
-      }
-
+      push(base64Data)
+      invokeStatic(BASE64_DECODER_TYPE, METHOD_BASE64_DECODE)
       putStatic(Type.getObjectType(className), "DATA", Type.getType("[B"))
       returnValue()
     }
@@ -344,9 +337,11 @@ class DeobfuscatorGenerator(
     private val METHOD_ENSURE_CHUNKS_LOADED = Method("ensureChunksLoaded", "(I)V")
     private val METHOD_LOAD_CHUNKS_FROM_BYTE_ARRAY = Method("loadChunksFromByteArray", "([BJ)[Ljava/lang/String;")
     private val METHOD_GET_STRING = Method("getString", "(J[Ljava/lang/String;)Ljava/lang/String;")
+    private val METHOD_BASE64_DECODE = Method("decode", "(Ljava/lang/String;)[B")
 
     private val OBJECT_TYPE = Type.getObjectType("java/lang/Object")
     private val DEOBFUSCATOR_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/DeobfuscatorHelper")
+    private val BASE64_DECODER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/Base64Decoder")
     private val WEAK_REF_TYPE = Type.getObjectType("java/lang/ref/WeakReference")
     private val WEAK_REF_ARRAY_TYPE = Type.getType("[Ljava/lang/ref/WeakReference;")
   }

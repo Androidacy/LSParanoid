@@ -29,3 +29,8 @@
     public static long seed(long);
     public static long next(long);
 }
+
+# Keep Base64Decoder used by Chunk classes
+-keep,allowobfuscation class com.androidacy.lsparanoid.Base64Decoder {
+    public static byte[] decode(java.lang.String);
+}
