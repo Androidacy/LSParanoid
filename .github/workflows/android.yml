@@ -17,8 +17,17 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
 
+    - name: Setup gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.14.3'
+        cache-cleanup: 'always'
+        build-scan-publish: true
+        build-scan-terms-of-use-url: "https://gradle.com/help/legal-terms-of-use"
+        build-scan-terms-of-use-agree: "yes"
+        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+    
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
