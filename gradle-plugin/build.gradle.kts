@@ -33,9 +33,11 @@ val generatedDir = File(projectDir, "generated")
 val generatedJavaSourcesDir = File(generatedDir, "main/java")
 
 val genTask = tasks.register("generateBuildClass") {
-    inputs.property("version", version)
+    val versionProvider = provider { version.toString() }
+    inputs.property("version", versionProvider)
     outputs.dir(generatedDir)
     doLast {
+        val versionValue = versionProvider.get()
         val buildClassFile =
             File(generatedJavaSourcesDir, "com/androidacy/lsparanoid/plugin/Build.java")
         buildClassFile.parentFile.mkdirs()
@@ -49,7 +51,7 @@ val genTask = tasks.register("generateBuildClass") {
                /**
                 * The constant VERSION.
                 */
-               public static final String VERSION = "$version";
+               public static final String VERSION = "$versionValue";
             }""".trimIndent()
         )
     }
