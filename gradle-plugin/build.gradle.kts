@@ -1,5 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.jvm.tasks.Jar
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.*
 
 plugins {
     idea
@@ -29,17 +33,16 @@ dependencies {
     implementation(libs.agp.api)
 }
 
-val generatedDir = File(projectDir, "generated")
-val generatedJavaSourcesDir = File(generatedDir, "main/java")
+abstract class GenerateBuildClass : DefaultTask() {
+    @get:Input
+    abstract val version: Property<String>
 
-val genTask = tasks.register("generateBuildClass") {
-    val versionProvider = provider { version.toString() }
-    inputs.property("version", versionProvider)
-    outputs.dir(generatedDir)
-    doLast {
-        val versionValue = versionProvider.get()
-        val buildClassFile =
-            File(generatedJavaSourcesDir, "com/androidacy/lsparanoid/plugin/Build.java")
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val buildClassFile = outputDir.file("main/java/com/androidacy/lsparanoid/plugin/Build.java").get().asFile
         buildClassFile.parentFile.mkdirs()
         buildClassFile.writeText(
             """
@@ -51,10 +54,18 @@ val genTask = tasks.register("generateBuildClass") {
                /**
                 * The constant VERSION.
                 */
-               public static final String VERSION = "$versionValue";
+               public static final String VERSION = "${version.get()}";
             }""".trimIndent()
         )
     }
+}
+
+val generatedDir = File(projectDir, "generated")
+val generatedJavaSourcesDir = File(generatedDir, "main/java")
+
+val genTask = tasks.register<GenerateBuildClass>("generateBuildClass") {
+    version.set(project.version.toString())
+    outputDir.set(generatedDir)
 }
 
 sourceSets {
