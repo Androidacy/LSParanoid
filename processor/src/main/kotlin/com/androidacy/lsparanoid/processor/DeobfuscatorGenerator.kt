@@ -21,8 +21,10 @@ import com.joom.grip.ClassRegistry
 import com.joom.grip.FileRegistry
 import com.joom.grip.mirrors.toAsmType
 import com.androidacy.lsparanoid.processor.model.Deobfuscator
+import com.androidacy.lsparanoid.DeobfuscatorHelper
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Opcodes.ACC_PUBLIC
 import org.objectweb.asm.Opcodes.ACC_SUPER
@@ -33,7 +35,8 @@ class DeobfuscatorGenerator(
   private val deobfuscator: Deobfuscator,
   private val stringRegistry: StringRegistry,
   private val classRegistry: ClassRegistry,
-  private val fileRegistry: FileRegistry
+  private val fileRegistry: FileRegistry,
+  private val resourceName: String
 ) {
 
   fun generateDeobfuscator(): ByteArray {
@@ -47,8 +50,8 @@ class DeobfuscatorGenerator(
       null
     )
 
-    writer.generateFields()
-    writer.generateStaticInitializer()
+    writer.generateChunksField()
+    writer.generateLoadChunksMethod()
     writer.generateDefaultConstructor()
     writer.generateGetStringMethod()
 
@@ -56,44 +59,25 @@ class DeobfuscatorGenerator(
     return writer.toByteArray()
   }
 
-  private fun ClassVisitor.generateFields() {
+  private fun ClassVisitor.generateChunksField() {
     visitField(
-      Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_FINAL,
+      Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_VOLATILE,
       CHUNKS_FIELD_NAME,
       CHUNKS_FIELD_TYPE.descriptor,
       null,
       null
-    ).apply {
-      visitEnd()
-    }
+    ).visitEnd()
   }
 
-  private fun ClassVisitor.generateStaticInitializer() {
-    newMethod(Opcodes.ACC_STATIC, METHOD_STATIC_INITIALIZER) {
-      val chunkCount = stringRegistry.getChunkCount()
-      push(chunkCount)
-      newArray(CHUNKS_ELEMENT_TYPE)
-      // Store the new array into the static field
-      putStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
+  private fun ClassVisitor.generateLoadChunksMethod() {
+    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC, METHOD_LOAD_CHUNKS) {
+      val totalLength = stringRegistry.getTotalLength()
 
-      // If there are chunks to add, load the field back onto the stack
-      if (chunkCount > 0) {
-        getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
-        var index = 0
-        stringRegistry.streamChunks { chunk ->
-          dup()
-          push(index)
-          push(chunk)
-          arrayStore(CHUNKS_ELEMENT_TYPE)
-          index++
-        }
-        if (index != chunkCount) {
-          throw IllegalStateException("Chunk count mismatch: expected $chunkCount but got $index")
-        }
-        pop()
-      }
-      // Ensure stack is balanced: if chunkCount was 0, no putStatic/getStatic/pop happened here.
-      // If chunkCount > 0, array was putStatic, then getStatic, then loop, then pop. Correct.
+      push(Type.getObjectType(deobfuscator.type.internalName))
+      push("/$resourceName")
+      push(totalLength)
+      invokeStatic(DEOBFUSCATOR_HELPER_TYPE, METHOD_LOAD_CHUNKS_FROM_RESOURCE)
+      returnValue()
     }
   }
 
@@ -106,19 +90,43 @@ class DeobfuscatorGenerator(
 
   private fun ClassVisitor.generateGetStringMethod() {
     newMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, deobfuscator.deobfuscationMethod) {
+      getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
+      val afterSync = newLabel()
+      ifNonNull(afterSync)
+
+      val deobfuscatorClass = Type.getObjectType(deobfuscator.type.internalName)
+      push(deobfuscatorClass)
+      dup()
+      monitorEnter()
+      val syncLocal = newLocal(Type.getType(Class::class.java))
+      storeLocal(syncLocal)
+
+      getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
+      val skipLoad = newLabel()
+      ifNonNull(skipLoad)
+
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNKS)
+      putStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
+
+      mark(skipLoad)
+      loadLocal(syncLocal)
+      monitorExit()
+
+      mark(afterSync)
       loadArg(0)
       getStatic(deobfuscator.type.toAsmType(), CHUNKS_FIELD_NAME, CHUNKS_FIELD_TYPE)
-      invokeStatic(DEOBFUSCATOR_HELPER_TYPE.toAsmType(), METHOD_GET_STRING)
+      invokeStatic(DEOBFUSCATOR_HELPER_TYPE, METHOD_GET_STRING)
     }
   }
 
   companion object {
-    private val METHOD_STATIC_INITIALIZER = Method("<clinit>", "()V")
     private val METHOD_DEFAULT_CONSTRUCTOR = Method("<init>", "()V")
-
+    private val METHOD_LOAD_CHUNKS = Method("loadChunks", "()[Ljava/lang/String;")
+    private val METHOD_LOAD_CHUNKS_FROM_RESOURCE = Method("loadChunksFromResource", "(Ljava/lang/Class;Ljava/lang/String;J)[Ljava/lang/String;")
     private val METHOD_GET_STRING = Method("getString", "(J[Ljava/lang/String;)Ljava/lang/String;")
 
     private val TYPE_OBJECT = Type.getObjectType("java/lang/Object")
+    private val DEOBFUSCATOR_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/DeobfuscatorHelper")
 
     private const val CHUNKS_FIELD_NAME = "chunks"
     private val CHUNKS_FIELD_TYPE = Type.getType("[Ljava/lang/String;")

@@ -34,6 +34,8 @@ interface StringRegistry : Closeable {
 
   fun streamChunks(consumer: (String) -> Unit)
   fun getChunkCount(): Int
+  fun getTotalLength(): Long
+  fun copyDataTo(output: java.io.OutputStream)
 }
 
 class StringRegistryImpl(
@@ -105,6 +107,18 @@ class StringRegistryImpl(
       return 0
     }
     return ((length + DeobfuscatorHelper.MAX_CHUNK_LENGTH - 1) / DeobfuscatorHelper.MAX_CHUNK_LENGTH).toInt()
+  }
+
+  override fun getTotalLength(): Long {
+    writer.flush()
+    return length
+  }
+
+  override fun copyDataTo(output: java.io.OutputStream) {
+    writer.flush()
+    tempFile.inputStream().use { input ->
+      input.copyTo(output)
+    }
   }
 
   override fun close() {

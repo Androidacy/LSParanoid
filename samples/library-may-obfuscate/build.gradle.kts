@@ -17,5 +17,5 @@ android {
 }
 
 dependencies {
-    implementation("com.androidacy.lsparanoid:core:0.9.11")
+    implementation("com.androidacy.lsparanoid:core:0.9.12")
 }
