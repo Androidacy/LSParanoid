@@ -32,10 +32,10 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build and publish to Maven Local
-      run: ./gradlew build test publishToMavenLocal
+      run: ./gradlew build test publishToMavenLocalb --parallel --configuration-cache
 
     - name: Build samples
       run: |
           cd samples
-          ./gradlew :application:assembleRelease :application-global-obfuscate:assembleRelease :library:assembleRelease :library-may-obfuscate:assembleRelease :library-obfuscate:assembleRelease
+          ./gradlew :application:assembleRelease :application-global-obfuscate:assembleRelease :library:assembleRelease :library-may-obfuscate:assembleRelease :library-obfuscate:assembleRelease --parallel --configuration-cache
       
