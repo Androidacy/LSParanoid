@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "com.androidacy.lsparanoid"
-    version = "0.9.18"
+    version = "0.10.0"
 
     plugins.withType(JavaPlugin::class.java) {
         extensions.configure(JavaPluginExtension::class.java) {

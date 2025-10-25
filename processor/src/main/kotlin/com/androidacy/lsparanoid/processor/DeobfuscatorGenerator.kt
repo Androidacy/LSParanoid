@@ -75,8 +75,10 @@ class DeobfuscatorGenerator(
 
     writer.generateFields()
     writer.generateLoadChunkMethod()
-    writer.generateEnsureChunksLoadedMethod()
+    writer.generateEnsureChunkLoadedMethod()
     writer.generateDefaultConstructor()
+    writer.generateGetStringLazyMethod()
+    writer.generateGetStringWithLazyChunksMethod()
     writer.generateGetStringMethod()
 
     writer.visitEnd()
@@ -126,22 +128,13 @@ class DeobfuscatorGenerator(
   }
 
   private fun ClassVisitor.generateFields() {
-    // WeakReference<String>[] chunks field
+    // String[] chunks field - lazy loaded on demand
     visitField(
       Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_VOLATILE,
       "chunks",
-      WEAK_REF_ARRAY_TYPE.descriptor,
+      STRING_ARRAY_TYPE.descriptor,
       null,
       null
-    ).visitEnd()
-
-    // int loadedUpTo field
-    visitField(
-      Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
-      "loadedUpTo",
-      "I",
-      null,
-      0
     ).visitEnd()
   }
 
@@ -186,106 +179,39 @@ class DeobfuscatorGenerator(
     }
   }
 
-  private fun ClassVisitor.generateEnsureChunksLoadedMethod() {
-    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_SYNCHRONIZED, METHOD_ENSURE_CHUNKS_LOADED) {
+  private fun ClassVisitor.generateEnsureChunkLoadedMethod() {
+    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_SYNCHRONIZED, METHOD_ENSURE_CHUNK_LOADED) {
       val chunkCount = stringRegistry.getChunkCount()
-      val batchSize = 20
 
-      // Initialize chunks array if null
-      getStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
-      val skipInit = newLabel()
-      ifNonNull(skipInit)
+      // Check if chunks array is initialized
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      val needInit = newLabel()
+      ifNull(needInit)
+      val checkChunk = newLabel()
+      goTo(checkChunk)
 
+      // Initialize array if null
+      mark(needInit)
       push(chunkCount)
-      newArray(WEAK_REF_TYPE)
-      putStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
+      newArray(STRING_TYPE)
+      putStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
 
-      mark(skipInit)
+      // Check if specific chunk is already loaded
+      mark(checkChunk)
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      loadArg(0)  // chunk index
+      arrayLoad(STRING_TYPE)
+      val alreadyLoaded = newLabel()
+      ifNonNull(alreadyLoaded)
 
-      // Load argument (minIndex)
-      loadArg(0)
-      val indexLocal = newLocal(Type.INT_TYPE)
-      storeLocal(indexLocal)
-
-      // while (loadedUpTo <= minIndex)
-      val loopStart = newLabel()
-      val loopEnd = newLabel()
-
-      mark(loopStart)
-      getStatic(deobfuscator.type.toAsmType(), "loadedUpTo", Type.INT_TYPE)
-      loadLocal(indexLocal)
-      ifCmp(Type.INT_TYPE, GeneratorAdapter.GT, loopEnd)
-
-      // int end = Math.min(loadedUpTo + batchSize, chunkCount)
-      getStatic(deobfuscator.type.toAsmType(), "loadedUpTo", Type.INT_TYPE)
-      push(batchSize)
-      math(Opcodes.IADD, Type.INT_TYPE)
-      push(chunkCount)
-      invokeStatic(Type.getType(Math::class.java), Method("min", "(II)I"))
-      val endLocal = newLocal(Type.INT_TYPE)
-      storeLocal(endLocal)
-
-      // for (int i = loadedUpTo; i < end; i++)
-      getStatic(deobfuscator.type.toAsmType(), "loadedUpTo", Type.INT_TYPE)
-      val iLocal = newLocal(Type.INT_TYPE)
-      storeLocal(iLocal)
-
-      val forStart = newLabel()
-      val forEnd = newLabel()
-
-      mark(forStart)
-      loadLocal(iLocal)
-      loadLocal(endLocal)
-      ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, forEnd)
-
-      // Check if chunks[i] is null or cleared
-      getStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
-      loadLocal(iLocal)
-      arrayLoad(WEAK_REF_TYPE)
-      dup()
-      val refNotNull = newLabel()
-      ifNonNull(refNotNull)
-
-      // Ref is null, need to load
-      pop()  // Remove dup
-      val needLoad = newLabel()
-      goTo(needLoad)
-
-      mark(refNotNull)
-      // Check if WeakReference.get() returns null
-      invokeVirtual(WEAK_REF_TYPE, Method("get", "()Ljava/lang/Object;"))
-      val dontNeedLoad = newLabel()
-      ifNonNull(dontNeedLoad)
-
-      mark(needLoad)
-      // Load chunk
-      getStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
-      loadLocal(iLocal)
-
-      // Create WeakReference with loaded chunk
-      newInstance(WEAK_REF_TYPE)
-      dup()
-      loadLocal(iLocal)
+      // Load this specific chunk
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      loadArg(0)  // chunk index for array store
+      loadArg(0)  // chunk index for loadChunk
       invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
-      invokeConstructor(WEAK_REF_TYPE, Method("<init>", "(Ljava/lang/Object;)V"))
+      arrayStore(STRING_TYPE)
 
-      arrayStore(WEAK_REF_TYPE)
-
-      mark(dontNeedLoad)
-
-      // i++
-      iinc(iLocal, 1)
-      goTo(forStart)
-
-      mark(forEnd)
-
-      // loadedUpTo = end
-      loadLocal(endLocal)
-      putStatic(deobfuscator.type.toAsmType(), "loadedUpTo", Type.INT_TYPE)
-
-      goTo(loopStart)
-
-      mark(loopEnd)
+      mark(alreadyLoaded)
       returnValue()
     }
   }
@@ -309,63 +235,122 @@ class DeobfuscatorGenerator(
         return@newMethod
       }
 
-      // Ensure chunks loaded
-      push(chunkCount - 1)
-      invokeStatic(deobfuscator.type.toAsmType(), METHOD_ENSURE_CHUNKS_LOADED)
+      // Call helper with lazy-loading chunk accessor
+      loadArg(0)
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_GET_STRING_LAZY)
+      returnValue()
+    }
+  }
 
-      // Unwrap WeakReferences to String[]
-      push(chunkCount)
-      newArray(Type.getType(String::class.java))
-      val chunksLocal = newLocal(Type.getType("[Ljava/lang/String;"))
+  private fun ClassVisitor.generateGetStringLazyMethod() {
+    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC, METHOD_GET_STRING_LAZY) {
+      // Inline getString with per-chunk lazy loading
+      // Only loads chunks actually accessed by this string
+
+      val idLocal = newLocal(Type.LONG_TYPE)
+      storeLocal(idLocal)
+      val chunksLocal = newLocal(STRING_ARRAY_TYPE)
       storeLocal(chunksLocal)
 
-      for (i in 0 until chunkCount) {
-        loadLocal(chunksLocal)
-        push(i)
-
-        // Get WeakReference from chunks[i]
-        getStatic(deobfuscator.type.toAsmType(), "chunks", WEAK_REF_ARRAY_TYPE)
-        push(i)
-        arrayLoad(WEAK_REF_TYPE)
-
-        // Check if WeakReference object itself is null
-        dup()
-        val weakRefNotNull = newLabel()
-        ifNonNull(weakRefNotNull)
-
-        // WeakReference is null, reload chunk
-        pop()
-        push(i)
-        invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
-        val afterLoad = newLabel()
-        goTo(afterLoad)
-
-        mark(weakRefNotNull)
-        // WeakReference exists, call get()
-        invokeVirtual(WEAK_REF_TYPE, Method("get", "()Ljava/lang/Object;"))
-
-        // Check if referent is null (GC'd)
-        dup()
-        val referentNotNull = newLabel()
-        ifNonNull(referentNotNull)
-
-        // Referent was GC'd, reload chunk
-        pop()
-        push(i)
-        invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
-        goTo(afterLoad)
-
-        mark(referentNotNull)
-        // Have valid referent from WeakRef
-        mark(afterLoad)
-        // Stack: chunksLocal, i, String
-        checkCast(Type.getType(String::class.java))
-        arrayStore(Type.getType(String::class.java))
-      }
-
-      // Call DeobfuscatorHelper.getString
-      loadArg(0)
+      // Call getCharAtLazy which ensures chunks are loaded on-demand
+      loadLocal(idLocal)
       loadLocal(chunksLocal)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_GET_STRING_WITH_LAZY_CHUNKS)
+      returnValue()
+    }
+  }
+
+  private fun ClassVisitor.generateGetStringWithLazyChunksMethod() {
+    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC, METHOD_GET_STRING_WITH_LAZY_CHUNKS) {
+      // This is DeobfuscatorHelper.getString but with lazy chunk loading
+      val idLocal = newLocal(Type.LONG_TYPE)
+      storeLocal(idLocal)
+      val chunksLocal = newLocal(STRING_ARRAY_TYPE)
+      storeLocal(chunksLocal)
+
+      // Calculate index (from DeobfuscatorHelper.getString)
+      // long state = RandomHelper.seed(id & 0xffffffffL);
+      loadLocal(idLocal)
+      push(0xffffffffL)
+      math(Opcodes.LAND, Type.LONG_TYPE)
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_SEED)
+      val stateLocal = newLocal(Type.LONG_TYPE)
+      storeLocal(stateLocal)
+
+      // state = RandomHelper.next(state);
+      loadLocal(stateLocal)
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_NEXT)
+      storeLocal(stateLocal)
+
+      // long low = (state >>> 32) & 0xffff;
+      loadLocal(stateLocal)
+      push(32)
+      math(Opcodes.LUSHR, Type.LONG_TYPE)
+      push(0xffffL)
+      math(Opcodes.LAND, Type.LONG_TYPE)
+      val lowLocal = newLocal(Type.LONG_TYPE)
+      storeLocal(lowLocal)
+
+      // state = RandomHelper.next(state);
+      loadLocal(stateLocal)
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_NEXT)
+      storeLocal(stateLocal)
+
+      // long high = (state >>> 16) & 0xffff0000;
+      loadLocal(stateLocal)
+      push(16)
+      math(Opcodes.LUSHR, Type.LONG_TYPE)
+      push(0xffff0000L)
+      math(Opcodes.LAND, Type.LONG_TYPE)
+      val highLocal = newLocal(Type.LONG_TYPE)
+      storeLocal(highLocal)
+
+      // int index = ((id >>> 32) ^ low ^ high).toInt();
+      loadLocal(idLocal)
+      push(32)
+      math(Opcodes.LUSHR, Type.LONG_TYPE)
+      loadLocal(lowLocal)
+      math(Opcodes.LXOR, Type.LONG_TYPE)
+      loadLocal(highLocal)
+      math(Opcodes.LXOR, Type.LONG_TYPE)
+      cast(Type.LONG_TYPE, Type.INT_TYPE)
+      val indexLocal = newLocal(Type.INT_TYPE)
+      storeLocal(indexLocal)
+
+      // int chunkIndex = index / MAX_CHUNK_LENGTH
+      loadLocal(indexLocal)
+      push(DeobfuscatorHelper.MAX_CHUNK_LENGTH)
+      math(Opcodes.IDIV, Type.INT_TYPE)
+      val chunkIndexLocal = newLocal(Type.INT_TYPE)
+      storeLocal(chunkIndexLocal)
+
+      // Ensure starting chunk is loaded
+      loadLocal(chunkIndexLocal)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_ENSURE_CHUNK_LOADED)
+
+      // Pre-load next chunk to handle strings that span chunk boundaries
+      // 99.9% of strings are < MAX_CHUNK_LENGTH (8191 chars), so 2 chunks is enough
+      // Only load if next chunk exists
+      val chunkCount = stringRegistry.getChunkCount()
+      loadLocal(chunkIndexLocal)
+      push(1)
+      math(Opcodes.IADD, Type.INT_TYPE)
+      dup()
+      push(chunkCount)
+      val skipNextChunk = newLabel()
+      ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, skipNextChunk)
+      // Next chunk exists, load it
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_ENSURE_CHUNK_LOADED)
+      val afterNextChunk = newLabel()
+      goTo(afterNextChunk)
+      mark(skipNextChunk)
+      pop() // Remove the dup'd chunk index
+      mark(afterNextChunk)
+
+      // Now delegate to DeobfuscatorHelper.getString with loaded chunks
+      loadLocal(idLocal)
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
       invokeStatic(DEOBFUSCATOR_HELPER_TYPE, METHOD_GET_STRING)
       returnValue()
     }
@@ -374,15 +359,20 @@ class DeobfuscatorGenerator(
   companion object {
     private val METHOD_DEFAULT_CONSTRUCTOR = Method("<init>", "()V")
     private val METHOD_LOAD_CHUNK = Method("loadChunk", "(I)Ljava/lang/String;")
-    private val METHOD_ENSURE_CHUNKS_LOADED = Method("ensureChunksLoaded", "(I)V")
+    private val METHOD_ENSURE_CHUNK_LOADED = Method("ensureChunkLoaded", "(I)V")
+    private val METHOD_GET_STRING_LAZY = Method("getStringLazy", "(J[Ljava/lang/String;)Ljava/lang/String;")
+    private val METHOD_GET_STRING_WITH_LAZY_CHUNKS = Method("getStringWithLazyChunks", "(J[Ljava/lang/String;)Ljava/lang/String;")
     private val METHOD_LOAD_CHUNKS_FROM_BYTE_ARRAY = Method("loadChunksFromByteArray", "([BJ)[Ljava/lang/String;")
     private val METHOD_GET_STRING = Method("getString", "(J[Ljava/lang/String;)Ljava/lang/String;")
     private val METHOD_BASE64_DECODE = Method("decode", "(Ljava/lang/String;)[B")
+    private val METHOD_RANDOM_SEED = Method("seed", "(J)J")
+    private val METHOD_RANDOM_NEXT = Method("next", "(J)J")
 
     private val OBJECT_TYPE = Type.getObjectType("java/lang/Object")
+    private val STRING_TYPE = Type.getType(String::class.java)
+    private val STRING_ARRAY_TYPE = Type.getType(Array<String>::class.java)
     private val DEOBFUSCATOR_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/DeobfuscatorHelper")
     private val BASE64_DECODER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/Base64Decoder")
-    private val WEAK_REF_TYPE = Type.getObjectType("java/lang/ref/WeakReference")
-    private val WEAK_REF_ARRAY_TYPE = Type.getType("[Ljava/lang/ref/WeakReference;")
+    private val RANDOM_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/RandomHelper")
   }
 }

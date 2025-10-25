@@ -15,19 +15,12 @@
  * limitations under the License.
  */
 
-package com.androidacy.lsparanoid;
-
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package com.androidacy.lsparanoid
 
 /**
- * The interface Obfuscate.
+ * Annotation to mark classes for string obfuscation.
  */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
-@Documented
-public @interface Obfuscate {
-}
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.BINARY)
+@MustBeDocumented
+annotation class Obfuscate
