@@ -91,7 +91,7 @@ object DeobfuscatorHelper {
      * Get deobfuscated string.
      *
      * @param id the obfuscated string ID
-     * @param chunks the chunks array
+     * @param chunks the chunks array (all chunks must be pre-loaded)
      * @return the deobfuscated string
      */
     @JvmStatic
@@ -103,10 +103,37 @@ object DeobfuscatorHelper {
         val high = (state ushr 16) and 0xffff0000
         val index = ((id ushr 32) xor low xor high).toInt()
 
-        state = getCharAt(index, chunks, state)
+        state = getCharAt(index, chunks, state, null)
         val length = ((state ushr 32) and 0xffffL).toInt()
         val chars = CharArray(length) { i ->
-            state = getCharAt(index + i + 1, chunks, state)
+            state = getCharAt(index + i + 1, chunks, state, null)
+            ((state ushr 32) and 0xffffL).toInt().toChar()
+        }
+
+        return String(chars)
+    }
+
+    /**
+     * Get deobfuscated string with lazy chunk loading.
+     *
+     * @param id the obfuscated string ID
+     * @param chunks the chunks array (chunks loaded on-demand)
+     * @param deobfuscatorClass the deobfuscator class for loading chunks via reflection
+     * @return the deobfuscated string
+     */
+    @JvmStatic
+    fun getString(id: Long, chunks: Array<String?>, deobfuscatorClass: Class<*>?): String {
+        var state = RandomHelper.seed(id and 0xffffffffL)
+        state = RandomHelper.next(state)
+        val low = (state ushr 32) and 0xffff
+        state = RandomHelper.next(state)
+        val high = (state ushr 16) and 0xffff0000
+        val index = ((id ushr 32) xor low xor high).toInt()
+
+        state = getCharAt(index, chunks, state, deobfuscatorClass)
+        val length = ((state ushr 32) and 0xffffL).toInt()
+        val chars = CharArray(length) { i ->
+            state = getCharAt(index + i + 1, chunks, state, deobfuscatorClass)
             ((state ushr 32) and 0xffffL).toInt().toChar()
         }
 
@@ -114,7 +141,7 @@ object DeobfuscatorHelper {
     }
 
     @JvmStatic
-    private fun getCharAt(charIndex: Int, chunks: Array<String?>, state: Long): Long {
+    private fun getCharAt(charIndex: Int, chunks: Array<String?>, state: Long, deobfuscatorClass: Class<*>?): Long {
         val nextState = RandomHelper.next(state)
         val chunkIndex = charIndex / MAX_CHUNK_LENGTH
 
@@ -122,8 +149,22 @@ object DeobfuscatorHelper {
             throw IllegalArgumentException("Chunk index out of bounds: $chunkIndex")
         }
 
-        val chunk = chunks[chunkIndex]
-            ?: throw IllegalStateException("Chunk is null at index: $chunkIndex")
+        // Load chunk on-demand if needed
+        var chunk = chunks[chunkIndex]
+        if (chunk == null) {
+            if (deobfuscatorClass != null) {
+                // Use reflection to call ensureChunkLoaded(int) on the deobfuscator class
+                try {
+                    val method = deobfuscatorClass.getMethod("ensureChunkLoaded", Int::class.javaPrimitiveType)
+                    chunk = method.invoke(null, chunkIndex) as String
+                    chunks[chunkIndex] = chunk
+                } catch (e: Exception) {
+                    throw RuntimeException("Failed to load chunk $chunkIndex", e)
+                }
+            } else {
+                throw IllegalStateException("Chunk is null at index: $chunkIndex")
+            }
+        }
 
         val indexInChunk = charIndex - (chunkIndex * MAX_CHUNK_LENGTH)
 
