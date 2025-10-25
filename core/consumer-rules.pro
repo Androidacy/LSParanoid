@@ -7,10 +7,9 @@
     public static java.lang.String getString(long);
 
     # Keep chunk loading infrastructure
-    private static java.lang.ref.WeakReference[] chunks;
-    private static int loadedUpTo;
+    private static volatile java.lang.String[] chunks;
     private static java.lang.String loadChunk(int);
-    private static synchronized void ensureChunksLoaded(int);
+    public static synchronized java.lang.String ensureChunkLoaded(int);
 }
 
 # Keep Chunk inner classes and their DATA fields
@@ -21,6 +20,7 @@
 # Keep DeobfuscatorHelper methods used by generated code
 -keep,allowobfuscation class com.androidacy.lsparanoid.DeobfuscatorHelper {
     public static java.lang.String getString(long, java.lang.String[]);
+    public static java.lang.String getString(long, java.lang.String[], java.lang.Class);
     public static java.lang.String[] loadChunksFromByteArray(byte[], long);
 }
 
