@@ -53,7 +53,7 @@ jobs:
     - name: Run instrumented tests on managed device
       run: |
           cd testApp
-          ./gradlew pixel6api34DebugAndroidTest -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --configuration-cache
+          ./gradlew pixel6api35DebugAndroidTest --configuration-cache
 
     - name: Upload test results
       if: always()

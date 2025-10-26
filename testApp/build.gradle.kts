@@ -5,7 +5,7 @@ plugins {
 
 lsparanoid {
     // Enable obfuscation for both debug and release to allow testing
-    variantFilter = { variant -> true }
+    variantFilter = { _ -> true }
 }
 
 android {
@@ -44,11 +44,10 @@ android {
     testOptions {
         managedDevices {
             localDevices {
-                create("pixel6api34") {
+                create("pixel6api35") {
                     device = "Pixel 6"
-                    apiLevel = 34
-                    systemImageSource = "aosp-atd"
-                    require64Bit = true
+                    apiLevel = 35
+                    systemImageSource = "default"
                 }
             }
         }
