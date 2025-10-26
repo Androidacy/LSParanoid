@@ -1,4 +1,5 @@
 build/
 /.gradle/
 /local.properties
+**/local.properties
 /.idea/

@@ -48,6 +48,7 @@ android {
                     device = "Pixel 6"
                     apiLevel = 34
                     systemImageSource = "aosp-atd"
+                    require64Bit = true
                 }
             }
         }
@@ -56,6 +57,9 @@ android {
 
 dependencies {
     implementation("com.androidacy.lsparanoid:core:0.10.2")
+
+    // Kotlin stdlib needed for annotations used by lsparanoid
+    compileOnly("org.jetbrains.kotlin:kotlin-stdlib:2.2.20")
 
     // Testing dependencies
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
