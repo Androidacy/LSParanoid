@@ -58,7 +58,6 @@ class DeobfuscatorGenerator(
       val chunkData = data.copyOfRange(startByte, endByte)
       classes["$chunkClassName.class"] = generateChunkClass(i, chunkData)
     }
-
     return classes
   }
 
@@ -271,8 +270,10 @@ class DeobfuscatorGenerator(
 
       mark(chunksReady)
 
-      // long state = RandomHelper.seed(id)
+      // long state = RandomHelper.seed(id & 0xFFFFFFFFL) - extract seed from lower 32 bits
       loadArg(0) // id
+      push(0xFFFFFFFFL) // mask for lower 32 bits
+      math(GeneratorAdapter.AND, Type.LONG_TYPE)
       invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_SEED)
       val state = newLocal(Type.LONG_TYPE)
       storeLocal(state)
