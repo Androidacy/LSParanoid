@@ -189,9 +189,9 @@ class DeobfuscatorGenerator(
       storeLocal(nextState)
 
       // int chunkIndex = charIndex / MAX_CHUNK_LENGTH
-      loadArg(0) // charIndex
-      push(maxChunkLength)
-      math(GeneratorAdapter.DIV, Type.INT_TYPE)
+      loadArg(0) // charIndex (int)
+      push(maxChunkLength) // MAX_CHUNK_LENGTH (int)
+      math(GeneratorAdapter.DIV, Type.INT_TYPE) // charIndex / MAX_CHUNK_LENGTH
       val chunkIndex = newLocal(Type.INT_TYPE)
       storeLocal(chunkIndex)
 
