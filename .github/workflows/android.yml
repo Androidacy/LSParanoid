@@ -38,4 +38,34 @@ jobs:
       run: |
           cd samples
           ./gradlew :application:assembleRelease :application-global-obfuscate:assembleRelease :library:assembleRelease :library-may-obfuscate:assembleRelease :library-obfuscate:assembleRelease --parallel --configuration-cache
+
+    - name: Build testApp release (verify ProGuard rules)
+      run: ./gradlew :testApp:assembleRelease --configuration-cache
+
+    - name: Enable KVM group permissions
+      run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+    - name: Run instrumented tests on managed device
+      run: ./gradlew :testApp:pixel6api34DebugAndroidTest -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --configuration-cache
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: testApp/build/reports/androidTests/
+        retention-days: 7
+
+    - name: Upload test APKs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-apks
+        path: |
+          testApp/build/outputs/apk/debug/*.apk
+          testApp/build/outputs/apk/release/*.apk
+        retention-days: 7
       

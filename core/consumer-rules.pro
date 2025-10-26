@@ -2,7 +2,7 @@
 # Keep Deobfuscator classes and their inner Chunk classes, but allow renaming/obfuscation
 
 # Keep all Deobfuscator classes (allow obfuscation of class names)
--keep,allowobfuscation class **.Deobfuscator$** {
+-keep,allowobfuscation class **.Deobfuscator {
     # Keep getString method - called from obfuscated code
     public static java.lang.String getString(long);
 
@@ -13,7 +13,7 @@
 }
 
 # Keep Chunk inner classes and their DATA fields
--keep,allowobfuscation class **.Deobfuscator$**$Chunk* {
+-keep,allowobfuscation class **.Deobfuscator$Chunk* {
     static final byte[] DATA;
 }
 

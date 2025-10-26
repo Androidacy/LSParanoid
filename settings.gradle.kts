@@ -2,6 +2,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
     repositories {
+        mavenLocal()
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -17,4 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LSParanoid"
 
-include(":core", ":processor", ":gradle-plugin")
+include(":core", ":processor", ":gradle-plugin", ":testApp")
