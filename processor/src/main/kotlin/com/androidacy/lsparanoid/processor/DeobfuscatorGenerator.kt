@@ -270,22 +270,34 @@ class DeobfuscatorGenerator(
 
       mark(chunksReady)
 
-      // long state = RandomHelper.seed(id & 0xFFFFFFFFL) - extract seed from lower 32 bits
+      // long state = RandomHelper.seed(id & 0xFFFFFFFFL)
       loadArg(0) // id
-      push(0xFFFFFFFFL) // mask for lower 32 bits
+      push(0xFFFFFFFFL)
       math(GeneratorAdapter.AND, Type.LONG_TYPE)
       invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_SEED)
       val state = newLocal(Type.LONG_TYPE)
       storeLocal(state)
 
-      // long low = state & 0xffffL
+      // state = RandomHelper.next(state)
       loadLocal(state)
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_NEXT)
+      storeLocal(state)
+
+      // long low = (state >>> 32) & 0xffff
+      loadLocal(state)
+      push(32)
+      math(GeneratorAdapter.USHR, Type.LONG_TYPE)
       push(0xffffL)
       math(GeneratorAdapter.AND, Type.LONG_TYPE)
       val low = newLocal(Type.LONG_TYPE)
       storeLocal(low)
 
-      // long high = (state >>> 16) & 0xffff0000L
+      // state = RandomHelper.next(state)
+      loadLocal(state)
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_NEXT)
+      storeLocal(state)
+
+      // long high = (state >>> 16) & 0xffff0000
       loadLocal(state)
       push(16)
       math(GeneratorAdapter.USHR, Type.LONG_TYPE)
