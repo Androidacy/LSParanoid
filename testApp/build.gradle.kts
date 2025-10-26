@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application") version "8.13.0"
-    id("com.androidacy.lsparanoid") version "0.10.2"
+    id("com.androidacy.lsparanoid") version "0.10.3"
 }
 
 lsparanoid {
@@ -56,7 +56,7 @@ android {
 }
 
 dependencies {
-    implementation("com.androidacy.lsparanoid:core:0.10.2")
+    implementation("com.androidacy.lsparanoid:core:0.10.3")
 
     // Kotlin stdlib needed for annotations used by lsparanoid
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib:2.2.20")

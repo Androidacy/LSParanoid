@@ -75,7 +75,7 @@ class DeobfuscatorGenerator(
 
     writer.generateFields()
     writer.generateLoadChunkMethod()
-    writer.generateEnsureChunkLoadedMethod()
+    writer.generateGetCharAtMethod()
     writer.generateDefaultConstructor()
     writer.generateGetStringMethod()
 
@@ -177,6 +177,70 @@ class DeobfuscatorGenerator(
     }
   }
 
+  private fun ClassVisitor.generateGetCharAtMethod() {
+    // private static long getCharAt(int charIndex, long state)
+    newMethod(Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC, METHOD_GET_CHAR_AT) {
+      val maxChunkLength = DeobfuscatorHelper.MAX_CHUNK_LENGTH
+
+      // long nextState = RandomHelper.next(state)
+      loadArg(1) // state
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_NEXT)
+      val nextState = newLocal(Type.LONG_TYPE)
+      storeLocal(nextState)
+
+      // int chunkIndex = charIndex / MAX_CHUNK_LENGTH
+      loadArg(0) // charIndex
+      push(maxChunkLength)
+      math(GeneratorAdapter.DIV, Type.INT_TYPE)
+      val chunkIndex = newLocal(Type.INT_TYPE)
+      storeLocal(chunkIndex)
+
+      // String chunk = chunks[chunkIndex]
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      loadLocal(chunkIndex)
+      arrayLoad(STRING_TYPE)
+      val chunk = newLocal(STRING_TYPE)
+      storeLocal(chunk)
+
+      // if (chunk == null) { chunk = loadChunk(chunkIndex); chunks[chunkIndex] = chunk; }
+      loadLocal(chunk)
+      val chunkLoaded = newLabel()
+      ifNonNull(chunkLoaded)
+
+      loadLocal(chunkIndex)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
+      dup()
+      storeLocal(chunk)
+      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
+      swap()
+      loadLocal(chunkIndex)
+      swap()
+      arrayStore(STRING_TYPE)
+
+      mark(chunkLoaded)
+
+      // int indexInChunk = charIndex - (chunkIndex * MAX_CHUNK_LENGTH)
+      loadArg(0) // charIndex
+      loadLocal(chunkIndex)
+      push(maxChunkLength)
+      math(GeneratorAdapter.MUL, Type.INT_TYPE)
+      math(GeneratorAdapter.SUB, Type.INT_TYPE)
+      val indexInChunk = newLocal(Type.INT_TYPE)
+      storeLocal(indexInChunk)
+
+      // return nextState ^ ((long)chunk.charAt(indexInChunk) << 32)
+      loadLocal(nextState)
+      loadLocal(chunk)
+      loadLocal(indexInChunk)
+      invokeVirtual(STRING_TYPE, Method("charAt", "(I)C"))
+      cast(Type.CHAR_TYPE, Type.LONG_TYPE)
+      push(32)
+      math(GeneratorAdapter.SHL, Type.LONG_TYPE)
+      math(GeneratorAdapter.XOR, Type.LONG_TYPE)
+      returnValue()
+    }
+  }
+
   private fun ClassVisitor.generateDefaultConstructor() {
     newMethod(Opcodes.ACC_PUBLIC, METHOD_DEFAULT_CONSTRUCTOR) {
       loadThis()
@@ -196,34 +260,115 @@ class DeobfuscatorGenerator(
         return@newMethod
       }
 
-      // Lazy-initialize chunks array (empty, all nulls) on first call
+      // Lazy-initialize chunks array
       getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
       val chunksReady = newLabel()
       ifNonNull(chunksReady)
 
-      // First call - initialize empty array (chunks loaded on-demand by DeobfuscatorHelper)
       push(chunkCount)
       newArray(STRING_TYPE)
       putStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)
 
       mark(chunksReady)
-      // Call DeobfuscatorHelper.getString with lazy chunk loading
-      loadArg(0)  // id parameter
-      getStatic(deobfuscator.type.toAsmType(), "chunks", STRING_ARRAY_TYPE)  // chunks array
-      push(deobfuscator.type.toAsmType())  // Deobfuscator.class for reflection
-      invokeStatic(DEOBFUSCATOR_HELPER_TYPE, METHOD_GET_STRING)
-      returnValue()
-    }
-  }
 
-  private fun ClassVisitor.generateEnsureChunkLoadedMethod() {
-    newMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_SYNCHRONIZED, METHOD_ENSURE_CHUNK_LOADED) {
-      // This method is called via reflection by DeobfuscatorHelper when a chunk is needed
-      // It loads the chunk at the given index and returns it
-      // Signature: public static synchronized String ensureChunkLoaded(int index)
+      // long state = RandomHelper.seed(id)
+      loadArg(0) // id
+      invokeStatic(RANDOM_HELPER_TYPE, METHOD_RANDOM_SEED)
+      val state = newLocal(Type.LONG_TYPE)
+      storeLocal(state)
 
-      loadArg(0)  // chunk index
-      invokeStatic(deobfuscator.type.toAsmType(), METHOD_LOAD_CHUNK)
+      // long low = state & 0xffffL
+      loadLocal(state)
+      push(0xffffL)
+      math(GeneratorAdapter.AND, Type.LONG_TYPE)
+      val low = newLocal(Type.LONG_TYPE)
+      storeLocal(low)
+
+      // long high = (state >>> 16) & 0xffff0000L
+      loadLocal(state)
+      push(16)
+      math(GeneratorAdapter.USHR, Type.LONG_TYPE)
+      push(0xffff0000L)
+      math(GeneratorAdapter.AND, Type.LONG_TYPE)
+      val high = newLocal(Type.LONG_TYPE)
+      storeLocal(high)
+
+      // int index = (int)((id >>> 32) ^ low ^ high)
+      loadArg(0) // id
+      push(32)
+      math(GeneratorAdapter.USHR, Type.LONG_TYPE)
+      loadLocal(low)
+      math(GeneratorAdapter.XOR, Type.LONG_TYPE)
+      loadLocal(high)
+      math(GeneratorAdapter.XOR, Type.LONG_TYPE)
+      cast(Type.LONG_TYPE, Type.INT_TYPE)
+      val index = newLocal(Type.INT_TYPE)
+      storeLocal(index)
+
+      // state = getCharAt(index, state)
+      loadLocal(index)
+      loadLocal(state)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_GET_CHAR_AT)
+      storeLocal(state)
+
+      // int length = (int)((state >>> 32) & 0xffffL)
+      loadLocal(state)
+      push(32)
+      math(GeneratorAdapter.USHR, Type.LONG_TYPE)
+      push(0xffffL)
+      math(GeneratorAdapter.AND, Type.LONG_TYPE)
+      cast(Type.LONG_TYPE, Type.INT_TYPE)
+      val length = newLocal(Type.INT_TYPE)
+      storeLocal(length)
+
+      // char[] chars = new char[length]
+      loadLocal(length)
+      newArray(Type.CHAR_TYPE)
+      val chars = newLocal(Type.getType("[C"))
+      storeLocal(chars)
+
+      // for (int i = 0; i < length; i++)
+      val i = newLocal(Type.INT_TYPE)
+      push(0)
+      storeLocal(i)
+      val loopStart = mark()
+      loadLocal(i)
+      loadLocal(length)
+      val loopEnd = newLabel()
+      ifICmp(GeneratorAdapter.GE, loopEnd)
+
+      // state = getCharAt(index + i + 1, state)
+      loadLocal(index)
+      loadLocal(i)
+      math(GeneratorAdapter.ADD, Type.INT_TYPE)
+      push(1)
+      math(GeneratorAdapter.ADD, Type.INT_TYPE)
+      loadLocal(state)
+      invokeStatic(deobfuscator.type.toAsmType(), METHOD_GET_CHAR_AT)
+      storeLocal(state)
+
+      // chars[i] = (char)((state >>> 32) & 0xffffL)
+      loadLocal(chars)
+      loadLocal(i)
+      loadLocal(state)
+      push(32)
+      math(GeneratorAdapter.USHR, Type.LONG_TYPE)
+      push(0xffffL)
+      math(GeneratorAdapter.AND, Type.LONG_TYPE)
+      cast(Type.LONG_TYPE, Type.CHAR_TYPE)
+      arrayStore(Type.CHAR_TYPE)
+
+      // i++
+      iinc(i, 1)
+      goTo(loopStart)
+
+      mark(loopEnd)
+
+      // return new String(chars)
+      newInstance(STRING_TYPE)
+      dup()
+      loadLocal(chars)
+      invokeConstructor(STRING_TYPE, Method("<init>", "([C)V"))
       returnValue()
     }
   }
@@ -231,15 +376,17 @@ class DeobfuscatorGenerator(
   companion object {
     private val METHOD_DEFAULT_CONSTRUCTOR = Method("<init>", "()V")
     private val METHOD_LOAD_CHUNK = Method("loadChunk", "(I)Ljava/lang/String;")
-    private val METHOD_ENSURE_CHUNK_LOADED = Method("ensureChunkLoaded", "(I)Ljava/lang/String;")
+    private val METHOD_GET_CHAR_AT = Method("getCharAt", "(IJ)J")
     private val METHOD_LOAD_CHUNKS_FROM_BYTE_ARRAY = Method("loadChunksFromByteArray", "([BJ)[Ljava/lang/String;")
-    private val METHOD_GET_STRING = Method("getString", "(J[Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/String;")
     private val METHOD_BASE64_DECODE = Method("decode", "(Ljava/lang/String;)[B")
+    private val METHOD_RANDOM_SEED = Method("seed", "(J)J")
+    private val METHOD_RANDOM_NEXT = Method("next", "(J)J")
 
     private val OBJECT_TYPE = Type.getObjectType("java/lang/Object")
     private val STRING_TYPE = Type.getType(String::class.java)
     private val STRING_ARRAY_TYPE = Type.getType(Array<String>::class.java)
     private val DEOBFUSCATOR_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/DeobfuscatorHelper")
+    private val RANDOM_HELPER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/RandomHelper")
     private val BASE64_DECODER_TYPE = Type.getObjectType("com/androidacy/lsparanoid/Base64Decoder")
   }
 }
