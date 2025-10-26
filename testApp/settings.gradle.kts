@@ -1,5 +1,3 @@
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-
 pluginManagement {
     repositories {
         mavenLocal()
@@ -8,14 +6,14 @@ pluginManagement {
         mavenCentral()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
+        mavenLocal()
         google()
         mavenCentral()
     }
 }
 
-rootProject.name = "LSParanoid"
-
-include(":core", ":processor", ":gradle-plugin")
+rootProject.name = "testApp"

@@ -55,7 +55,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation("com.androidacy.lsparanoid:core:0.10.2")
 
     // Testing dependencies
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

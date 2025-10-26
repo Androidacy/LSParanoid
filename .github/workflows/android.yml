@@ -40,7 +40,9 @@ jobs:
           ./gradlew :application:assembleRelease :application-global-obfuscate:assembleRelease :library:assembleRelease :library-may-obfuscate:assembleRelease :library-obfuscate:assembleRelease --parallel --configuration-cache
 
     - name: Build testApp release (verify ProGuard rules)
-      run: ./gradlew :testApp:assembleRelease --configuration-cache
+      run: |
+          cd testApp
+          ./gradlew assembleRelease --configuration-cache
 
     - name: Enable KVM group permissions
       run: |
@@ -49,7 +51,9 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
     - name: Run instrumented tests on managed device
-      run: ./gradlew :testApp:pixel6api34DebugAndroidTest -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --configuration-cache
+      run: |
+          cd testApp
+          ./gradlew pixel6api34DebugAndroidTest -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --configuration-cache
 
     - name: Upload test results
       if: always()
