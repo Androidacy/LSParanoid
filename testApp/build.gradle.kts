@@ -44,10 +44,10 @@ android {
     testOptions {
         managedDevices {
             localDevices {
-                create("pixel6api35") {
-                    device = "Pixel 6"
+                create("pixel8api35") {
+                    device = "Pixel 8"
                     apiLevel = 35
-                    systemImageSource = "default"
+                    systemImageSource = "aosp-atd"
                 }
             }
         }
