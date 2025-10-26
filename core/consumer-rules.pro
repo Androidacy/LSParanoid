@@ -9,6 +9,11 @@
     # Keep chunk loading infrastructure
     private static volatile java.lang.String[] chunks;
     private static java.lang.String loadChunk(int);
+}
+
+# IMPORTANT: Keep ensureChunkLoaded method name - it's accessed via reflection by name
+# Do NOT allow obfuscation of this method name
+-keepclassmembernames class **.Deobfuscator {
     public static synchronized java.lang.String ensureChunkLoaded(int);
 }
 
