@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 
 plugins {
     alias(libs.plugins.kotlin) apply false
-    id("com.vanniktech.maven.publish") version "0.34.0" apply false
+    id("com.vanniktech.maven.publish") version "0.35.0" apply false
 }
 
 
